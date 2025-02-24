@@ -186,6 +186,12 @@ renderer.domElement.addEventListener('click', function(event) {
         
         selectedPoints.push(selectedPoint);
 
+        // Ajouter un point rouge à l'endroit sélectionné
+        const pointGeometry = new THREE.BufferGeometry().setFromPoints([selectedPoint]);
+        const pointMaterial = new THREE.PointsMaterial({ color: 0xff0000, size: 0.1 });
+        const redPoint = new THREE.Points(pointGeometry, pointMaterial);
+        scene.add(redPoint);
+
         if (selectedPoints.length === 2) {
           // Calculer la distance entre les deux points sélectionnés
           const distance = selectedPoints[0].distanceTo(selectedPoints[1]);
