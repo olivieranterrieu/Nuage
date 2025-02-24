@@ -5,22 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Affichage Nuage de Points 3D</title>
   <style>
-    body { margin: 0; }
+    body { margin: 0; padding: 0; }
     canvas { display: block; }
+
     /* Style pour le bouton */
     #sizeControl {
-      position: absolute;
+      position: fixed;
       top: 20px;
       left: 20px;
+      z-index: 1000;
       padding: 10px;
       background-color: #4CAF50;
       color: white;
       border: none;
       font-size: 16px;
       cursor: pointer;
+      border-radius: 5px;
     }
+
     #sizeControl:hover {
       background-color: #45a049;
+    }
+
+    /* Style pour le champ de fichier */
+    #fileInput {
+      position: absolute;
+      top: 80px;
+      left: 20px;
+      z-index: 1000;
     }
   </style>
 </head>
@@ -28,12 +40,12 @@
   <!-- Bouton pour modifier la taille des points -->
   <button id="sizeControl">Changer la taille des points</button>
   
-  <input type="file" id="fileInput" accept=".xyz, .txt" style="position: absolute; z-index: 1; top: 60px; left: 10px;">
+  <!-- Le champ pour sélectionner le fichier -->
+  <input type="file" id="fileInput" accept=".xyz, .txt">
   
-  <!-- Import des librairies Three.js et OrbitControls -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-  
+
   <script>
     let scene, camera, renderer, controls;
     let pointMaterial, pointCloud;
@@ -59,7 +71,7 @@
       animate();
     }
 
-    // Fonction pour charger le fichier .xyz ou .txt et parse les données
+    // Fonction pour charger le fichier .xyz ou .txt et parser les données
     document.getElementById('fileInput').addEventListener('change', function(event) {
       const file = event.target.files[0];
       if (file) {
@@ -87,7 +99,7 @@
             const x = parseFloat(parts[0]);
             const y = parseFloat(parts[1]);
             const z = parseFloat(parts[2]);
-            const r = parseInt(parts[3], 10) / 255;
+            const r = parseInt(parts[3], 10) / 255; // Normalisation de 0-255 à 0-1
             const g = parseInt(parts[4], 10) / 255;
             const b = parseInt(parts[5], 10) / 255;
             if (!isNaN(x) && !isNaN(y) && !isNaN(z) && !isNaN(r) && !isNaN(g) && !isNaN(b)) {
@@ -101,7 +113,7 @@
       return { positions, colors };
     }
 
-    // Fonction pour créer le nuage de points
+    // Fonction pour créer le nuage de points avec des couleurs RGB
     function createPointCloud(data) {
       // Supprimer les précédents objets de la scène
       scene.children = scene.children.filter(child => !(child instanceof THREE.Points));
@@ -113,16 +125,12 @@
       geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
       geometry.setAttribute('color', new THREE.BufferAttribute(vertexColors, 3));
 
-      // Charger une texture (facultatif)
-      const texture = new THREE.TextureLoader().load('path/to/small-texture.png');
-
-      // Créer le matériau avec la taille initiale
+      // Créer le matériau avec la couleur et la taille des points
       pointMaterial = new THREE.PointsMaterial({
-        size: pointSize,  // Taille des points
-        map: texture,
-        vertexColors: true,
+        size: pointSize, // Taille des points
+        vertexColors: true, // Utiliser les couleurs des sommets
         transparent: true,
-        alphaTest: 0.5,
+        alphaTest: 0.5
       });
 
       pointCloud = new THREE.Points(geometry, pointMaterial);
