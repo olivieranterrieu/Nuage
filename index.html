@@ -139,7 +139,7 @@
 
     // Fonction pour modifier la taille des points via le bouton
     document.getElementById('sizeControl').addEventListener('click', function() {
-      pointSize = pointSize === 0.05 ? 0.1 : 0.05; // Alterner la taille des points
+      pointSize = pointSize === 0.01 ? 0.001 : 0.01; // Alterner la taille des points
       if (pointCloud) {
         pointCloud.material.size = pointSize; // Appliquer la nouvelle taille
       }
