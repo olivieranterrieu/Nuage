@@ -151,15 +151,22 @@
       }
     });
 
-    document.getElementById('measureControl').addEventListener('click', function() {
-      selectedPoints = [];
-      distanceDisplay.innerText = 'Distance: -';
-      if (line) {
-        scene.remove(line);
-        line.geometry.dispose();
-        line.material.dispose();
-      }
-    });
+document.getElementById('measureControl').addEventListener('click', function() {
+  // Réinitialiser la sélection des points
+  selectedPoints = [];
+  distanceDisplay.innerText = 'Distance: -';
+  
+  // Supprimer les points rouges de la scène
+  scene.children = scene.children.filter(child => !(child.name === "selectedPoint"));
+  
+  // Supprimer la ligne rouge si elle existe
+  if (line) {
+    scene.remove(line);
+    line.geometry.dispose();
+    line.material.dispose();
+    line = null;
+  }
+});
 
 renderer.domElement.addEventListener('click', function(event) {
   if (selectedPoints.length < 2 && pointCloud) {
@@ -171,42 +178,35 @@ renderer.domElement.addEventListener('click', function(event) {
     // Créer un raycaster pour détecter les intersections avec le nuage de points
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, camera);
-    
+
     const intersects = raycaster.intersectObject(pointCloud);
     if (intersects.length > 0) {
-      // Trouver le point le plus proche dans le tableau des positions
-      const intersectedPoint = intersects[0].index; // Index du point sélectionné
-      
-      if (intersectedPoint !== undefined) {
-        const positions = pointCloud.geometry.attributes.position.array;
-        const x = positions[intersectedPoint * 3];
-        const y = positions[intersectedPoint * 3 + 1];
-        const z = positions[intersectedPoint * 3 + 2];
-        const selectedPoint = new THREE.Vector3(x, y, z);
-        
-        selectedPoints.push(selectedPoint);
+      // Récupérer la vraie position du point touché dans le nuage
+      const selectedPoint = intersects[0].point.clone();
+      selectedPoints.push(selectedPoint);
 
-        // Ajouter un point rouge à l'endroit sélectionné
-        const pointGeometry = new THREE.BufferGeometry().setFromPoints([selectedPoint]);
-        const pointMaterial = new THREE.PointsMaterial({ color: 0xff0000, size: 0.1 });
-        const redPoint = new THREE.Points(pointGeometry, pointMaterial);
-        scene.add(redPoint);
+      // Créer un petit point rouge bien aligné
+      const pointGeometry = new THREE.BufferGeometry().setFromPoints([selectedPoint]);
+      const pointMaterial = new THREE.PointsMaterial({ color: 0xff0000, size: 0.03 });
+      const redPoint = new THREE.Points(pointGeometry, pointMaterial);
+      redPoint.name = "selectedPoint"; // Permet de le supprimer plus tard
+      scene.add(redPoint);
 
-        if (selectedPoints.length === 2) {
-          // Calculer la distance entre les deux points sélectionnés
-          const distance = selectedPoints[0].distanceTo(selectedPoints[1]);
-          distanceDisplay.innerText = `Distance: ${distance.toFixed(2)} unités`;
+      if (selectedPoints.length === 2) {
+        // Calculer la distance entre les deux points sélectionnés
+        const distance = selectedPoints[0].distanceTo(selectedPoints[1]);
+        distanceDisplay.innerText = `Distance: ${distance.toFixed(2)} unités`;
 
-          // Tracer une ligne rouge entre les deux points sélectionnés
-          const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
-          const geometry = new THREE.BufferGeometry().setFromPoints(selectedPoints);
-          line = new THREE.Line(geometry, material);
-          scene.add(line);
-        }
+        // Tracer une ligne rouge entre les deux points sélectionnés
+        const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+        const geometry = new THREE.BufferGeometry().setFromPoints(selectedPoints);
+        line = new THREE.Line(geometry, material);
+        scene.add(line);
       }
     }
   }
 });
+
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
