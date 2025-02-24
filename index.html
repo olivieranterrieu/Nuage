@@ -93,7 +93,7 @@
       geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
       geometry.setAttribute('color', new THREE.BufferAttribute(vertexColors, 3));
 
-      const pointMaterial = new THREE.PointsMaterial({ vertexColors: true, size: 0.1 });
+      const pointMaterial = new THREE.PointsMaterial({ vertexColors: true, size: 0.05 });
       const pointCloud = new THREE.Points(geometry, pointMaterial);
       scene.add(pointCloud);
     }
