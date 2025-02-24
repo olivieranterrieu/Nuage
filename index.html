@@ -155,10 +155,10 @@ document.getElementById('measureControl').addEventListener('click', function() {
   // Réinitialiser la sélection des points
   selectedPoints = [];
   distanceDisplay.innerText = 'Distance: -';
-  
+
   // Supprimer les points rouges de la scène
-  scene.children = scene.children.filter(child => !(child.name === "selectedPoint"));
-  
+  scene.children = scene.children.filter(child => child.name !== "selectedPoint");
+
   // Supprimer la ligne rouge si elle existe
   if (line) {
     scene.remove(line);
@@ -181,40 +181,62 @@ renderer.domElement.addEventListener('click', function(event) {
 
     const intersects = raycaster.intersectObject(pointCloud);
     if (intersects.length > 0) {
-      // Récupérer l'index du point intersecté
-      const index = intersects[0].index;
-      const geometry = pointCloud.geometry.attributes.position.array;
+      // Point détecté par le raycaster (approximation)
+      const detectedPoint = intersects[0].point;
 
-      // Récupérer les coordonnées exactes du point dans le nuage
-      const selectedPoint = new THREE.Vector3(
-        geometry[index * 3],
-        geometry[index * 3 + 1],
-        geometry[index * 3 + 2]
-      );
+      // Trouver le point réel le plus proche dans le nuage
+      const closestPoint = findClosestPoint(detectedPoint);
 
-      selectedPoints.push(selectedPoint);
+      if (closestPoint) {
+        selectedPoints.push(closestPoint);
 
-      // Créer un petit point rouge bien aligné
-      const pointGeometry = new THREE.BufferGeometry().setFromPoints([selectedPoint]);
-      const pointMaterial = new THREE.PointsMaterial({ color: 0xff0000, size: 0.03 });
-      const redPoint = new THREE.Points(pointGeometry, pointMaterial);
-      redPoint.name = "selectedPoint"; // Permet de le supprimer plus tard
-      scene.add(redPoint);
+        // Ajouter un marqueur rouge exactement sur le point sélectionné
+        const pointGeometry = new THREE.BufferGeometry().setFromPoints([closestPoint]);
+        const pointMaterial = new THREE.PointsMaterial({ color: 0xff0000, size: 0.03 });
+        const redPoint = new THREE.Points(pointGeometry, pointMaterial);
+        redPoint.name = "selectedPoint";
+        scene.add(redPoint);
 
-      if (selectedPoints.length === 2) {
-        // Calculer la distance entre les deux points sélectionnés
-        const distance = selectedPoints[0].distanceTo(selectedPoints[1]);
-        distanceDisplay.innerText = `Distance: ${distance.toFixed(2)} unités`;
+        if (selectedPoints.length === 2) {
+          // Calculer la distance entre les deux points sélectionnés
+          const distance = selectedPoints[0].distanceTo(selectedPoints[1]);
+          distanceDisplay.innerText = `Distance: ${distance.toFixed(2)} unités`;
 
-        // Tracer une ligne rouge entre les deux points sélectionnés
-        const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
-        const geometry = new THREE.BufferGeometry().setFromPoints(selectedPoints);
-        line = new THREE.Line(geometry, material);
-        scene.add(line);
+          // Tracer une ligne rouge entre les deux points sélectionnés
+          const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+          const geometry = new THREE.BufferGeometry().setFromPoints(selectedPoints);
+          line = new THREE.Line(geometry, material);
+          scene.add(line);
+        }
       }
     }
   }
 });
+
+// Fonction pour trouver le point du nuage le plus proche du point détecté
+function findClosestPoint(targetPoint) {
+  let closestPoint = null;
+  let minDistance = Infinity;
+
+  const positions = pointCloud.geometry.attributes.position.array;
+
+  for (let i = 0; i < positions.length; i += 3) {
+    const x = positions[i];
+    const y = positions[i + 1];
+    const z = positions[i + 2];
+
+    const point = new THREE.Vector3(x, y, z);
+    const distance = point.distanceTo(targetPoint);
+
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestPoint = point;
+    }
+  }
+  
+  return closestPoint;
+}
+
 
 
     function animate() {
