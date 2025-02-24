@@ -106,32 +106,36 @@
     });
 
     // Fonction pour parser le fichier .xyz/.txt (6 colonnes : 3 coordonnées + 3 couleurs RGB)
-    function parseXYZ(data) {
-      const lines = data.split('\n');
-      const positions = [];
-      const colors = [];
+  function parseXYZ(data) {
+  const lines = data.split('\n');
+  const positions = [];
+  const colors = [];
 
-      lines.forEach(line => {
-        line = line.trim();
-        if (line !== "") {
-          const parts = line.split(/\s+/);
-          if (parts.length >= 6) {
-            const x = parseFloat(parts[0]);
-            const y = parseFloat(parts[1]);
-            const z = parseFloat(parts[2]);
-            const r = parseInt(parts[3], 10) / 255; // Normalisation de 0-255 à 0-1
-            const g = parseInt(parts[4], 10) / 255;
-            const b = parseInt(parts[5], 10) / 255;
-            if (!isNaN(x) && !isNaN(y) && !isNaN(z) && !isNaN(r) && !isNaN(g) && !isNaN(b)) {
-              positions.push(x, y, z);
-              colors.push(r, g, b); // Appliquer la couleur RGB à chaque point
-            }
-          }
+  lines.forEach(line => {
+    line = line.trim();
+    if (line !== "") {
+      const parts = line.split(/\s+/);
+      if (parts.length >= 6) {
+        const x = parseFloat(parts[0]);
+        const y = parseFloat(parts[1]);
+        const z = parseFloat(parts[2]);
+        const r = parseInt(parts[3], 10) / 255;
+        const g = parseInt(parts[4], 10) / 255;
+        const b = parseInt(parts[5], 10) / 255;
+
+        if (!isNaN(x) && !isNaN(y) && !isNaN(z) && !isNaN(r) && !isNaN(g) && !isNaN(b)) {
+          positions.push(x, y, z);
+          colors.push(r, g, b);
         }
-      });
-
-      return { positions, colors };
+      }
     }
+  });
+
+  console.log("Positions chargées :", positions.length / 3, "points");
+  console.log("Couleurs chargées :", colors.length / 3, "points");
+
+  return { positions, colors };
+}
 
     // Fonction pour créer le nuage de points avec des couleurs RGB
     function createPointCloud(data) {
