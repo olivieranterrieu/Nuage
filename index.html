@@ -7,10 +7,28 @@
   <style>
     body { margin: 0; }
     canvas { display: block; }
+    /* Style pour le bouton */
+    #sizeControl {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #sizeControl:hover {
+      background-color: #45a049;
+    }
   </style>
 </head>
 <body>
-  <input type="file" id="fileInput" accept=".xyz, .txt" style="position: absolute; z-index: 1; top: 10px; left: 10px;">
+  <!-- Bouton pour modifier la taille des points -->
+  <button id="sizeControl">Changer la taille des points</button>
+  
+  <input type="file" id="fileInput" accept=".xyz, .txt" style="position: absolute; z-index: 1; top: 60px; left: 10px;">
   
   <!-- Import des librairies Three.js et OrbitControls -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -18,6 +36,8 @@
   
   <script>
     let scene, camera, renderer, controls;
+    let pointMaterial, pointCloud;
+    let pointSize = 0.05; // Taille initiale des points
 
     // Initialisation de la scène, de la caméra et du renderer
     function init() {
@@ -93,10 +113,29 @@
       geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
       geometry.setAttribute('color', new THREE.BufferAttribute(vertexColors, 3));
 
-      const pointMaterial = new THREE.PointsMaterial({ vertexColors: true, size: 0.001 });
-      const pointCloud = new THREE.Points(geometry, pointMaterial);
+      // Charger une texture (facultatif)
+      const texture = new THREE.TextureLoader().load('path/to/small-texture.png');
+
+      // Créer le matériau avec la taille initiale
+      pointMaterial = new THREE.PointsMaterial({
+        size: pointSize,  // Taille des points
+        map: texture,
+        vertexColors: true,
+        transparent: true,
+        alphaTest: 0.5,
+      });
+
+      pointCloud = new THREE.Points(geometry, pointMaterial);
       scene.add(pointCloud);
     }
+
+    // Fonction pour modifier la taille des points via le bouton
+    document.getElementById('sizeControl').addEventListener('click', function() {
+      pointSize = pointSize === 0.05 ? 0.1 : 0.05; // Alterner la taille des points
+      if (pointCloud) {
+        pointCloud.material.size = pointSize; // Appliquer la nouvelle taille
+      }
+    });
 
     // Fonction d'animation pour mettre à jour la scène
     function animate() {
