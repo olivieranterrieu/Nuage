@@ -161,31 +161,46 @@
       }
     });
 
-    renderer.domElement.addEventListener('click', function(event) {
-      if (selectedPoints.length < 2) {
-        const mouse = new THREE.Vector2();
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+renderer.domElement.addEventListener('click', function(event) {
+  if (selectedPoints.length < 2 && pointCloud) {
+    // Convertir la position de la souris en coordonnées normalisées
+    const mouse = new THREE.Vector2();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObject(pointCloud);
+    // Créer un raycaster pour détecter les intersections avec le nuage de points
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+    
+    const intersects = raycaster.intersectObject(pointCloud);
+    if (intersects.length > 0) {
+      // Trouver le point le plus proche dans le tableau des positions
+      const intersectedPoint = intersects[0].index; // Index du point sélectionné
+      
+      if (intersectedPoint !== undefined) {
+        const positions = pointCloud.geometry.attributes.position.array;
+        const x = positions[intersectedPoint * 3];
+        const y = positions[intersectedPoint * 3 + 1];
+        const z = positions[intersectedPoint * 3 + 2];
+        const selectedPoint = new THREE.Vector3(x, y, z);
+        
+        selectedPoints.push(selectedPoint);
 
-        if (intersects.length > 0) {
-          selectedPoints.push(intersects[0].point);
-          if (selectedPoints.length === 2) {
-            const distance = selectedPoints[0].distanceTo(selectedPoints[1]);
-            distanceDisplay.innerText = `Distance: ${distance.toFixed(2)} unités`;
+        if (selectedPoints.length === 2) {
+          // Calculer la distance entre les deux points sélectionnés
+          const distance = selectedPoints[0].distanceTo(selectedPoints[1]);
+          distanceDisplay.innerText = `Distance: ${distance.toFixed(2)} unités`;
 
-            const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
-            const geometry = new THREE.BufferGeometry().setFromPoints([selectedPoints[0], selectedPoints[1]]);
-            line = new THREE.Line(geometry, material);
-            scene.add(line);
-          }
+          // Tracer une ligne rouge entre les deux points sélectionnés
+          const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+          const geometry = new THREE.BufferGeometry().setFromPoints(selectedPoints);
+          line = new THREE.Line(geometry, material);
+          scene.add(line);
         }
       }
-    });
-
+    }
+  }
+});
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
