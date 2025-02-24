@@ -181,8 +181,17 @@ renderer.domElement.addEventListener('click', function(event) {
 
     const intersects = raycaster.intersectObject(pointCloud);
     if (intersects.length > 0) {
-      // Récupérer la vraie position du point touché dans le nuage
-      const selectedPoint = intersects[0].point.clone();
+      // Récupérer l'index du point intersecté
+      const index = intersects[0].index;
+      const geometry = pointCloud.geometry.attributes.position.array;
+
+      // Récupérer les coordonnées exactes du point dans le nuage
+      const selectedPoint = new THREE.Vector3(
+        geometry[index * 3],
+        geometry[index * 3 + 1],
+        geometry[index * 3 + 2]
+      );
+
       selectedPoints.push(selectedPoint);
 
       // Créer un petit point rouge bien aligné
@@ -206,6 +215,7 @@ renderer.domElement.addEventListener('click', function(event) {
     }
   }
 });
+
 
     function animate() {
       requestAnimationFrame(animate);
