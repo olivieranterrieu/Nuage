@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Affichage Nuage de Points 3D</title>
+  <style>
+    body { margin: 0; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <input type="file" id="fileInput" accept=".xyz, .txt" style="position: absolute; z-index: 1; top: 10px; left: 10px;">
+  
+  <!-- Import des librairies Three.js et OrbitControls -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  
+  <script>
+    let scene, camera, renderer, controls;
+
+    // Initialisation de la scène, de la caméra et du renderer
+    function init() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      // Position initiale de la caméra
+      camera.position.z = 5;
+
+      // Contrôles de la souris pour déplacer et zoomer
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.25;
+
+      // Fonction d'animation
+      animate();
+    }
+
+    // Fonction pour charger le fichier .xyz ou .txt et parse les données
+    document.getElementById('fileInput').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const content = e.target.result;
+          const points = parseXYZ(content);
+          createPointCloud(points);
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    // Fonction pour parser le fichier .xyz/.txt (6 colonnes : 3 coordonnées + 3 couleurs RGB)
+    function parseXYZ(data) {
+      const lines = data.split('\n');
+      const positions = [];
+      const colors = [];
+
+      lines.forEach(line => {
+        line = line.trim();
+        if (line !== "") {
+          const parts = line.split(/\s+/);
+          if (parts.length >= 6) {
+            const x = parseFloat(parts[0]);
+            const y = parseFloat(parts[1]);
+            const z = parseFloat(parts[2]);
+            const r = parseInt(parts[3], 10) / 255;
+            const g = parseInt(parts[4], 10) / 255;
+            const b = parseInt(parts[5], 10) / 255;
+            if (!isNaN(x) && !isNaN(y) && !isNaN(z) && !isNaN(r) && !isNaN(g) && !isNaN(b)) {
+              positions.push(x, y, z);
+              colors.push(r, g, b); // Appliquer la couleur RGB à chaque point
+            }
+          }
+        }
+      });
+
+      return { positions, colors };
+    }
+
+    // Fonction pour créer le nuage de points
+    function createPointCloud(data) {
+      // Supprimer les précédents objets de la scène
+      scene.children = scene.children.filter(child => !(child instanceof THREE.Points));
+
+      const geometry = new THREE.BufferGeometry();
+      const vertices = new Float32Array(data.positions);
+      const vertexColors = new Float32Array(data.colors);
+
+      geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+      geometry.setAttribute('color', new THREE.BufferAttribute(vertexColors, 3));
+
+      const pointMaterial = new THREE.PointsMaterial({ vertexColors: true, size: 0.1 });
+      const pointCloud = new THREE.Points(geometry, pointMaterial);
+      scene.add(pointCloud);
+    }
+
+    // Fonction d'animation pour mettre à jour la scène
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update(); // Met à jour les contrôles
+      renderer.render(scene, camera);
+    }
+
+    // Redimensionner le rendu en fonction de la taille de la fenêtre
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Initialiser la scène
+    init();
+  </script>
+</body>
+</html>
