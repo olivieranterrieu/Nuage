@@ -7,36 +7,30 @@
   <style>
     body { margin: 0; padding: 0; }
     canvas { display: block; }
-
-    /* Style pour le bouton */
+    
     #sizeControl, #measureControl {
       position: fixed;
       top: 20px;
       z-index: 1000;
       padding: 10px;
       background-color: #4CAF50;
-      color: black;
+      color: white;
       border: none;
       font-size: 16px;
       cursor: pointer;
       border-radius: 5px;
     }
-
     #sizeControl:hover, #measureControl:hover {
       background-color: #45a049;
     }
-
     #sizeControl { left: 20px; }
     #measureControl { left: 160px; }
-
-    /* Style pour le champ de fichier */
     #fileInput {
       position: absolute;
       top: 80px;
       left: 20px;
       z-index: 1000;
     }
-
     #distanceDisplay {
       position: fixed;
       bottom: 20px;
@@ -50,14 +44,9 @@
   </style>
 </head>
 <body>
-  <!-- Boutons pour changer la taille et mesurer la distance -->
   <button id="sizeControl">Changer la taille des points</button>
   <button id="measureControl">Mesurer la distance</button>
-  
-  <!-- Le champ pour sélectionner le fichier -->
   <input type="file" id="fileInput" accept=".xyz, .txt">
-
-  <!-- Affichage de la distance -->
   <div id="distanceDisplay">Distance: -</div>
   
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -66,32 +55,29 @@
   <script>
     let scene, camera, renderer, controls;
     let pointMaterial, pointCloud;
-    let pointSize = 0.05; // Taille initiale des points
-    let selectedPoints = []; // Liste des points sélectionnés
-    let line; // Ligne qui va relier les points sélectionnés
+    let pointSize = 0.05;
+    let selectedPoints = [];
+    let line;
     let distanceDisplay = document.getElementById('distanceDisplay');
 
-    // Initialisation de la scène, de la caméra et du renderer
     function init() {
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x000000); // Fond noir
       document.body.appendChild(renderer.domElement);
 
-      // Position initiale de la caméra
       camera.position.z = 5;
-
-      // Contrôles de la souris pour déplacer et zoomer
       controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.25;
-
-      // Fonction d'animation
+      
       animate();
     }
 
-    // Fonction pour charger le fichier .xyz ou .txt et parser les données
+    init(); // On initialise la scène avant tout !
+
     document.getElementById('fileInput').addEventListener('change', function(event) {
       const file = event.target.files[0];
       if (file) {
@@ -105,41 +91,39 @@
       }
     });
 
-    // Fonction pour parser le fichier .xyz/.txt (6 colonnes : 3 coordonnées + 3 couleurs RGB)
-  function parseXYZ(data) {
-  const lines = data.split('\n');
-  const positions = [];
-  const colors = [];
+    function parseXYZ(data) {
+      const lines = data.split('\n');
+      const positions = [];
+      const colors = [];
 
-  lines.forEach(line => {
-    line = line.trim();
-    if (line !== "") {
-      const parts = line.split(/\s+/);
-      if (parts.length >= 6) {
-        const x = parseFloat(parts[0]);
-        const y = parseFloat(parts[1]);
-        const z = parseFloat(parts[2]);
-        const r = parseInt(parts[3], 10) / 255;
-        const g = parseInt(parts[4], 10) / 255;
-        const b = parseInt(parts[5], 10) / 255;
-
-        if (!isNaN(x) && !isNaN(y) && !isNaN(z) && !isNaN(r) && !isNaN(g) && !isNaN(b)) {
-          positions.push(x, y, z);
-          colors.push(r, g, b);
+      lines.forEach(line => {
+        line = line.trim();
+        if (line !== "") {
+          const parts = line.split(/\s+/);
+          if (parts.length >= 6) {
+            const x = parseFloat(parts[0]);
+            const y = parseFloat(parts[1]);
+            const z = parseFloat(parts[2]);
+            const r = parseInt(parts[3], 10) / 255;
+            const g = parseInt(parts[4], 10) / 255;
+            const b = parseInt(parts[5], 10) / 255;
+            if (!isNaN(x) && !isNaN(y) && !isNaN(z) && !isNaN(r) && !isNaN(g) && !isNaN(b)) {
+              positions.push(x, y, z);
+              colors.push(r, g, b);
+            }
+          }
         }
-      }
+      });
+
+      return { positions, colors };
     }
-  });
 
-  console.log("Positions chargées :", positions.length / 3, "points");
-  console.log("Couleurs chargées :", colors.length / 3, "points");
-
-  return { positions, colors };
-}
-
-    // Fonction pour créer le nuage de points avec des couleurs RGB
     function createPointCloud(data) {
-      // Supprimer les précédents objets de la scène
+      if (!scene) {
+        console.error("Erreur : la scène n'est pas encore initialisée !");
+        return;
+      }
+
       scene.children = scene.children.filter(child => !(child instanceof THREE.Points));
 
       const geometry = new THREE.BufferGeometry();
@@ -149,10 +133,9 @@
       geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
       geometry.setAttribute('color', new THREE.BufferAttribute(vertexColors, 3));
 
-      // Créer le matériau avec la couleur et la taille des points
       pointMaterial = new THREE.PointsMaterial({
-        size: pointSize, // Taille des points
-        vertexColors: true, // Utiliser les couleurs des sommets
+        size: pointSize,
+        vertexColors: true,
         transparent: true,
         alphaTest: 0.5
       });
@@ -161,49 +144,39 @@
       scene.add(pointCloud);
     }
 
-    // Fonction pour modifier la taille des points via le bouton
     document.getElementById('sizeControl').addEventListener('click', function() {
-      pointSize = pointSize === 0.05 ? 0.1 : 0.05; // Alterner la taille des points
+      pointSize = pointSize === 0.05 ? 0.1 : 0.05;
       if (pointCloud) {
-        pointCloud.material.size = pointSize; // Appliquer la nouvelle taille
+        pointCloud.material.size = pointSize;
       }
     });
 
-    // Fonction pour activer la mesure de distance
     document.getElementById('measureControl').addEventListener('click', function() {
-      selectedPoints = []; // Réinitialiser la liste des points sélectionnés
+      selectedPoints = [];
       distanceDisplay.innerText = 'Distance: -';
       if (line) {
-        scene.remove(line); // Supprimer la ligne précédente
+        scene.remove(line);
         line.geometry.dispose();
         line.material.dispose();
       }
     });
 
-    // Fonction de gestion des clics pour sélectionner les points
     renderer.domElement.addEventListener('click', function(event) {
       if (selectedPoints.length < 2) {
-        // Récupérer la position du clic sur l'écran
         const mouse = new THREE.Vector2();
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-        // Calculer la position dans le monde 3D
         const raycaster = new THREE.Raycaster();
-        raycaster.camera = camera;
-        raycaster.updateMatrixWorld();
         raycaster.setFromCamera(mouse, camera);
-
         const intersects = raycaster.intersectObject(pointCloud);
+
         if (intersects.length > 0) {
-          // Ajouter le point sélectionné à la liste
           selectedPoints.push(intersects[0].point);
           if (selectedPoints.length === 2) {
-            // Calculer la distance entre les deux points sélectionnés
             const distance = selectedPoints[0].distanceTo(selectedPoints[1]);
             distanceDisplay.innerText = `Distance: ${distance.toFixed(2)} unités`;
 
-            // Tracer une ligne rouge entre les deux points sélectionnés
             const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
             const geometry = new THREE.BufferGeometry().setFromPoints([selectedPoints[0], selectedPoints[1]]);
             line = new THREE.Line(geometry, material);
@@ -213,22 +186,17 @@
       }
     });
 
-    // Fonction d'animation pour mettre à jour la scène
     function animate() {
       requestAnimationFrame(animate);
-      controls.update(); // Met à jour les contrôles
+      controls.update();
       renderer.render(scene, camera);
     }
 
-    // Redimensionner le rendu en fonction de la taille de la fenêtre
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
-
-    // Initialiser la scène
-    init();
   </script>
 </body>
 </html>
