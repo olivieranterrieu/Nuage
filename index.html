@@ -3,47 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Affichage Nuage de Points 3D avec Mesure de Distance</title>
+  <title>Affichage Nuage de Points 3D avec Gestion de Tags</title>
   <style>
-    body { margin: 0; padding: 0; }
+    body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
     canvas { display: block; }
 
-    #sizeControl, #measureControl, #addModelButton, #addMapButton {
+    /* Style des boutons et sliders */
+    #header {
       position: fixed;
-      top: 20px;
-      z-index: 1000;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
       padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+    }
+    #header button {
       background-color: #4CAF50;
       color: white;
       border: none;
+      padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
       border-radius: 5px;
     }
-
-    #sizeControl:hover, #measureControl:hover, #addModelButton:hover, #addMapButton:hover {
+    #header button:hover {
       background-color: #45a049;
     }
-
-    #sizeControl { left: 20px; }
-    #measureControl { left: 160px; }
-    #addModelButton { left: 300px; }
-    #addMapButton { left: 450px; }
-
     #sizeSlider {
+      width: 200px;
+    }
+    #fileInput {
       position: fixed;
       top: 80px;
       left: 20px;
       z-index: 1000;
     }
-
-    #fileInput {
-      position: absolute;
-      top: 140px;
-      left: 20px;
-      z-index: 1000;
-    }
-
     #distanceDisplay {
       position: fixed;
       bottom: 20px;
@@ -57,19 +55,33 @@
 
     .tag {
       position: absolute;
+      background-color: rgba(0, 0, 0, 0.7);
       color: white;
-      background-color: black;
       padding: 5px;
       border-radius: 5px;
+    }
+
+    .slider-container {
+      display: flex;
+      justify-content: space-between;
+      width: 300px;
+      align-items: center;
     }
   </style>
 </head>
 <body>
-  <button id="addModelButton">Modele 3D</button>
-  <button id="addMapButton">Cartographie</button>
-  <button id="measureControl">Mesurer la distance</button>
+  <div id="header">
+    <div>
+      <button id="addModelButton">Modele 3D</button>
+      <button id="addMapButton">Cartographie</button>
+    </div>
+    <div class="slider-container">
+      <span>Point Size:</span>
+      <input type="range" id="sizeSlider" min="0.001" max="0.05" step="0.001" value="0.01">
+    </div>
+  </div>
+
   <input type="file" id="fileInput" accept=".xyz, .txt">
-  <input type="range" id="sizeSlider" min="0.001" max="0.05" step="0.001" value="0.01">
   <div id="distanceDisplay">Distance: -</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -203,11 +215,7 @@
     });
 
     // Sélectionner un point 3D et l'agrandir
-    document.getElementById('measureControl').addEventListener('click', function() {
-      renderer.domElement.addEventListener('click', selectPoint);
-    });
-
-    function selectPoint(event) {
+    document.addEventListener('click', function(event) {
       const mouse = new THREE.Vector2();
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -230,7 +238,7 @@
         selectedMarker.position.copy(point);
         scene.add(selectedMarker);
 
-        // Ouvrir une fenêtre de texte pour saisir un tag
+        // Clic droit pour ajouter un texte
         selectedMarker.addEventListener('contextmenu', function(event) {
           event.preventDefault();
           const text = prompt("Ajouter un texte :");
@@ -245,7 +253,7 @@
           }
         });
       }
-    }
+    });
 
     // Animer la scène
     function animate() {
@@ -261,22 +269,19 @@
       });
     }
 
-    // Convertir les positions 3D en coordonnées 2D pour le tag
+    // Convertir les coordonnées 3D en coordonnées de l'écran
     function toScreenPosition(point) {
-      const vector = point.clone();
+      const vector = new THREE.Vector3(point.x, point.y, point.z);
       vector.project(camera);
 
-      const widthHalf = window.innerWidth / 2;
-      const heightHalf = window.innerHeight / 2;
+      const widthHalf = 0.5 * window.innerWidth;
+      const heightHalf = 0.5 * window.innerHeight;
 
-      return new THREE.Vector2(vector.x * widthHalf + widthHalf, -vector.y * heightHalf + heightHalf);
+      return {
+        x: (vector.x * widthHalf) + widthHalf,
+        y: -(vector.y * heightHalf) + heightHalf
+      };
     }
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
   </script>
 </body>
 </html>
