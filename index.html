@@ -48,6 +48,7 @@
     let selecting = false;
     let selectedPoints = [];
 
+    // Initialisation de la scène
     function init() {
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -57,10 +58,12 @@
 
       controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
+      controls.dampingFactor = 0.25; // Ajoute une légère inertie au mouvement de la caméra
 
       animate();
     }
 
+    // Fonction de réinitialisation de la scène
     function resetScene() {
       clouds.forEach(cloud => scene.remove(cloud));
       selectedPoints.forEach(p => scene.remove(p.point));
@@ -72,10 +75,6 @@
       resetScene();
     });
 
-    document.getElementById('addCloud').addEventListener('click', function() {
-      document.getElementById('fileInput').click();
-    });
-
     document.getElementById('selectPoints').addEventListener('click', function() {
       selecting = !selecting;
     });
@@ -85,6 +84,7 @@
       clouds.forEach(cloud => cloud.material.size = pointSize);
     });
 
+    // Charger un nuage de points depuis un fichier
     function loadPointCloud(file) {
       if (file) {
         const reader = new FileReader();
@@ -97,6 +97,7 @@
       }
     }
 
+    // Parser les données XYZ
     function parseXYZ(data) {
       const lines = data.split('\n');
       const positions = [];
@@ -131,6 +132,7 @@
       return { positions, colors, center };
     }
 
+    // Créer un nuage de points dans la scène
     function createPointCloud(data) {
       const geometry = new THREE.BufferGeometry();
       const positions = new Float32Array(data.positions.length);
@@ -156,6 +158,7 @@
       fitCameraToScene();
     }
 
+    // Adapter la caméra à la scène
     function fitCameraToScene() {
       const box = new THREE.Box3();
       clouds.forEach(cloud => box.expandByObject(cloud));
@@ -174,6 +177,7 @@
       controls.update();
     }
 
+    // Écouteur d'événements pour le clic sur la scène
     renderer.domElement.addEventListener('click', function(event) {
       if (!selecting) return;
 
@@ -195,7 +199,9 @@
           circle.position.copy(point);
           scene.add(circle);
 
-          circle.addEventListener('contextmenu', function() {
+          // Interaction avec le clic droit sur le point
+          circle.addEventListener('contextmenu', function(event) {
+            event.preventDefault(); // Empêche le menu contextuel par défaut
             const text = prompt("Ajouter un tag :");
             if (text) {
               const div = document.createElement('div');
@@ -213,6 +219,7 @@
       });
     });
 
+    // Fonction d'animation continue pour mettre à jour la scène
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
