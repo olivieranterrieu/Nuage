@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Affichage Nuage de Points 3D Optimisé</title>
+  <style>
+    body { margin: 0; }
+    canvas { display: block; }
+    #fileInput {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <input type="file" id="fileInput" accept=".xyz, .txt">
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <script>
+    let scene, camera, renderer, controls, pointCloud;
+    let pointSize = 0.005;
+
+    function init() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      camera.position.z = 10;
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+      animate();
+    }
+
+    document.getElementById('fileInput').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const content = new TextDecoder().decode(new Uint8Array(e.target.result));
+          const points = parseXYZ(content);
+          createPointCloud(points);
+        };
+        reader.readAsArrayBuffer(file);  // Utilisation d'un buffer binaire au lieu de texte
+      }
+    });
+
+    function parseXYZ(data) {
+      const lines = data.split('\n');
+      const totalLines = lines.length;
+      const sampleRate = totalLines > 1000000 ? 5 : 1; // Réduction pour fichiers > 1M points
+
+      const positions = new Float32Array((totalLines / sampleRate) * 3);
+      const colors = new Float32Array((totalLines / sampleRate) * 3);
+      let index = 0;
+
+      for (let i = 0; i < totalLines; i += sampleRate) {
+        const line = lines[i].trim();
+        if (line !== "") {
+          const parts = line.split(/\s+/);
+          if (parts.length >= 7) {
+            const x = parseFloat(parts[0]);
+            const y = parseFloat(parts[1]);
+            const z = parseFloat(parts[2]);
+            const r = parseInt(parts[4], 10) / 255;
+            const g = parseInt(parts[5], 10) / 255;
+            const b = parseInt(parts[6], 10) / 255;
+            if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+              positions[index] = x;
+              positions[index + 1] = y;
+              positions[index + 2] = z;
+              colors[index] = r;
+              colors[index + 1] = g;
+              colors[index + 2] = b;
+              index += 3;
+            }
+          }
+        }
+      }
+      return { positions, colors };
+    }
+
+    function createPointCloud(data) {
+      if (pointCloud) scene.remove(pointCloud);
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
+      geometry.setAttribute('color', new THREE.BufferAttribute(data.colors, 3));
+
+      const material = new THREE.PointsMaterial({
+        size: pointSize,
+        vertexColors: true
+      });
+
+      pointCloud = new THREE.Points(geometry, material);
+      scene.add(pointCloud);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    init();
+  </script>
+</body>
+</html>
