@@ -104,9 +104,9 @@
             const x = parseFloat(parts[0]);
             const y = parseFloat(parts[1]);
             const z = parseFloat(parts[2]);
-            const r = parseInt(parts[3], 10) / 255;
-            const g = parseInt(parts[4], 10) / 255;
-            const b = parseInt(parts[5], 10) / 255;
+            const r = parseInt(parts[4], 10) / 255;
+            const g = parseInt(parts[5], 10) / 255;
+            const b = parseInt(parts[6], 10) / 255;
             if (!isNaN(x) && !isNaN(y) && !isNaN(z) && !isNaN(r) && !isNaN(g) && !isNaN(b)) {
               positions.push(x, y, z);
               colors.push(r, g, b);
@@ -145,8 +145,8 @@
     }
 
     document.getElementById('sizeControl').addEventListener('click', function() {
- //     pointSize = pointSize === 0.005 ? 0.001 : 0.005;
-        pointSize = pointSize === 0.001 ? 0.005 : 0.01;
+       pointSize = pointSize === 0.005 ? 0.001 : 0.005;
+ //       pointSize = pointSize === 0.001 ? 0.005 : 0.01;
       if (pointCloud) {
         pointCloud.material.size = pointSize;
       }
