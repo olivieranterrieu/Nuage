@@ -8,7 +8,7 @@
     body { margin: 0; padding: 0; }
     canvas { display: block; }
 
-    #sizeControl, #measureControl, #addSecondCloud {
+    #sizeControl, #measureControl, #addModelButton, #addMapButton {
       position: fixed;
       top: 20px;
       z-index: 1000;
@@ -21,17 +21,25 @@
       border-radius: 5px;
     }
 
-    #sizeControl:hover, #measureControl:hover, #addSecondCloud:hover {
+    #sizeControl:hover, #measureControl:hover, #addModelButton:hover, #addMapButton:hover {
       background-color: #45a049;
     }
 
     #sizeControl { left: 20px; }
     #measureControl { left: 160px; }
-    #addSecondCloud { left: 300px; }
+    #addModelButton { left: 300px; }
+    #addMapButton { left: 450px; }
+
+    #sizeSlider {
+      position: fixed;
+      top: 80px;
+      left: 20px;
+      z-index: 1000;
+    }
 
     #fileInput {
       position: absolute;
-      top: 80px;
+      top: 140px;
       left: 20px;
       z-index: 1000;
     }
@@ -46,13 +54,22 @@
       padding: 10px;
       border-radius: 5px;
     }
+
+    .tag {
+      position: absolute;
+      color: white;
+      background-color: black;
+      padding: 5px;
+      border-radius: 5px;
+    }
   </style>
 </head>
 <body>
-  <button id="sizeControl">Changer la taille des points</button>
+  <button id="addModelButton">Modele 3D</button>
+  <button id="addMapButton">Cartographie</button>
   <button id="measureControl">Mesurer la distance</button>
-  <button id="addSecondCloud">Ajouter un second nuage</button>
   <input type="file" id="fileInput" accept=".xyz, .txt">
+  <input type="range" id="sizeSlider" min="0.001" max="0.05" step="0.001" value="0.01">
   <div id="distanceDisplay">Distance: -</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -66,6 +83,7 @@
     let line;
     let distanceDisplay = document.getElementById('distanceDisplay');
     let selectedMarker;
+    let tags = [];
 
     // Initialisation de la scène
     function init() {
@@ -167,68 +185,91 @@
     }
 
     // Changer la taille des points
-    document.getElementById('sizeControl').addEventListener('click', function() {
-      pointSize = pointSize === 0.005 ? 0.01 : pointSize * 1.5;
+    document.getElementById('sizeSlider').addEventListener('input', function(event) {
+      pointSize = parseFloat(event.target.value);
       pointClouds.forEach(cloud => {
         cloud.material.size = pointSize;
       });
     });
 
-    // Ajouter un second nuage de points
-    document.getElementById('addSecondCloud').addEventListener('click', function() {
+    // Charger le nuage principal (Modele 3D)
+    document.getElementById('addModelButton').addEventListener('click', function() {
+      document.getElementById('fileInput').click();
+    });
+
+    // Charger un nuage secondaire sans effacer le modèle 3D (Cartographie)
+    document.getElementById('addMapButton').addEventListener('click', function() {
       document.getElementById('fileInput').click();
     });
 
     // Sélectionner un point 3D et l'agrandir
-    renderer.domElement.addEventListener('click', function(event) {
-      if (selectedPoints.length < 2 && pointClouds.length > 0) {
-        const mouse = new THREE.Vector2();
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(mouse, camera);
-
-        const intersects = raycaster.intersectObject(pointClouds[0]);
-        if (intersects.length > 0) {
-          const point = intersects[0].point;
-
-          // Ajouter un point sélectionné en vert
-          if (selectedMarker) {
-            scene.remove(selectedMarker);
-          }
-
-          const geometry = new THREE.CircleGeometry(0.1, 32);
-          const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-          selectedMarker = new THREE.Mesh(geometry, material);
-          selectedMarker.position.copy(point);
-          scene.add(selectedMarker);
-
-          // Ajouter un texte à côté du point
-          selectedMarker.addEventListener('contextmenu', function(event) {
-            event.preventDefault();
-            const text = prompt("Ajouter un texte :");
-            if (text) {
-              const div = document.createElement('div');
-              div.className = 'tag';
-              div.innerText = text;
-              document.body.appendChild(div);
-              div.style.left = `${event.clientX}px`;
-              div.style.top = `${event.clientY}px`;
-              div.style.display = 'block';
-            }
-          });
-
-          selectedPoints.push(point);
-        }
-      }
+    document.getElementById('measureControl').addEventListener('click', function() {
+      renderer.domElement.addEventListener('click', selectPoint);
     });
+
+    function selectPoint(event) {
+      const mouse = new THREE.Vector2();
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+
+      const intersects = raycaster.intersectObjects(pointClouds);
+      if (intersects.length > 0) {
+        const point = intersects[0].point;
+
+        // Ajouter un marqueur vert au point sélectionné
+        if (selectedMarker) {
+          scene.remove(selectedMarker);
+        }
+
+        const geometry = new THREE.CircleGeometry(0.1, 32);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        selectedMarker = new THREE.Mesh(geometry, material);
+        selectedMarker.position.copy(point);
+        scene.add(selectedMarker);
+
+        // Ouvrir une fenêtre de texte pour saisir un tag
+        selectedMarker.addEventListener('contextmenu', function(event) {
+          event.preventDefault();
+          const text = prompt("Ajouter un texte :");
+          if (text) {
+            const tag = document.createElement('div');
+            tag.className = 'tag';
+            tag.innerText = text;
+            document.body.appendChild(tag);
+            tag.style.left = `${event.clientX}px`;
+            tag.style.top = `${event.clientY}px`;
+            tags.push({ point: point, text: text, tag: tag });
+          }
+        });
+      }
+    }
 
     // Animer la scène
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
       renderer.render(scene, camera);
+
+      // Mettre à jour les positions des tags
+      tags.forEach(tagData => {
+        const screenPos = toScreenPosition(tagData.point);
+        tagData.tag.style.left = `${screenPos.x}px`;
+        tagData.tag.style.top = `${screenPos.y}px`;
+      });
+    }
+
+    // Convertir les positions 3D en coordonnées 2D pour le tag
+    function toScreenPosition(point) {
+      const vector = point.clone();
+      vector.project(camera);
+
+      const widthHalf = window.innerWidth / 2;
+      const heightHalf = window.innerHeight / 2;
+
+      return new THREE.Vector2(vector.x * widthHalf + widthHalf, -vector.y * heightHalf + heightHalf);
     }
 
     window.addEventListener('resize', () => {
