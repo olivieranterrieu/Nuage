@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Affichage Nuage de Points 3D Optimisé</title>
+  <title>Nuage de Points 3D Centré</title>
   <style>
     body { margin: 0; }
     canvas { display: block; }
@@ -32,8 +32,12 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
 
-      camera.position.z = 10;
       controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.1;
+      controls.screenSpacePanning = false;
+      controls.maxDistance = 500;
+      controls.minDistance = 1;
 
       animate();
     }
@@ -47,14 +51,17 @@
           const points = parseXYZ(content);
           createPointCloud(points);
         };
-        reader.readAsArrayBuffer(file);  // Utilisation d'un buffer binaire au lieu de texte
+        reader.readAsArrayBuffer(file);
       }
     });
 
     function parseXYZ(data) {
       const lines = data.split('\n');
       const totalLines = lines.length;
-      const sampleRate = totalLines > 1000000 ? 5 : 1; // Réduction pour fichiers > 1M points
+      const sampleRate = totalLines > 1000000 ? 5 : 1; // Réduction si gros fichier
+
+      let sumX = 0, sumY = 0, sumZ = 0;
+      let count = 0;
 
       const positions = new Float32Array((totalLines / sampleRate) * 3);
       const colors = new Float32Array((totalLines / sampleRate) * 3);
@@ -72,6 +79,11 @@
             const g = parseInt(parts[5], 10) / 255;
             const b = parseInt(parts[6], 10) / 255;
             if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+              sumX += x;
+              sumY += y;
+              sumZ += z;
+              count++;
+
               positions[index] = x;
               positions[index + 1] = y;
               positions[index + 2] = z;
@@ -83,14 +95,26 @@
           }
         }
       }
-      return { positions, colors };
+
+      // Calcul du centre du nuage de points
+      const center = new THREE.Vector3(sumX / count, sumY / count, sumZ / count);
+      return { positions, colors, center };
     }
 
     function createPointCloud(data) {
       if (pointCloud) scene.remove(pointCloud);
 
       const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
+      const positions = new Float32Array(data.positions.length);
+      
+      // Déplacer les points pour qu'ils soient centrés à (0,0,0)
+      for (let i = 0; i < data.positions.length; i += 3) {
+        positions[i] = data.positions[i] - data.center.x;
+        positions[i + 1] = data.positions[i + 1] - data.center.y;
+        positions[i + 2] = data.positions[i + 2] - data.center.z;
+      }
+
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
       geometry.setAttribute('color', new THREE.BufferAttribute(data.colors, 3));
 
       const material = new THREE.PointsMaterial({
@@ -100,6 +124,25 @@
 
       pointCloud = new THREE.Points(geometry, material);
       scene.add(pointCloud);
+
+      // Ajuster la caméra pour voir le nuage de points
+      fitCameraToObject(camera, pointCloud);
+    }
+
+    function fitCameraToObject(camera, object) {
+      const box = new THREE.Box3().setFromObject(object);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const fov = camera.fov * (Math.PI / 180);
+      let distance = Math.abs(maxDim / Math.sin(fov / 2));
+
+      camera.position.set(center.x, center.y, center.z + distance);
+      camera.lookAt(center);
+
+      controls.target.set(center.x, center.y, center.z);
+      controls.update();
     }
 
     function animate() {
