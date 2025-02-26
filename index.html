@@ -6,7 +6,7 @@
   <title>Nuage de Points 3D</title>
   <style>
     body { margin: 0; }
-    canvas { display: block; }
+    canvas { display: block; background: black; }
     .controls {
       position: absolute;
       top: 20px;
@@ -70,7 +70,6 @@
 
     document.getElementById('resetCloud').addEventListener('click', function() {
       resetScene();
-      document.getElementById('fileInput').click();
     });
 
     document.getElementById('addCloud').addEventListener('click', function() {
@@ -213,6 +212,12 @@
         }
       });
     });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
 
     init();
   </script>
