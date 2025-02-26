@@ -300,14 +300,24 @@
         tag.style.left = `${screenPos.x}px`;
         tag.style.top = `${screenPos.y}px`;
         
-        tags.push({ point: currentPoint.position, text: text, tag: tag });
+        tags.push({ point: currentPoint, text: text, tag: tag });
         contextMenu.style.display = 'none';
       }
     });
 
-    // Supprimer le point vert
+    // Supprimer le point vert et le texte associé
     document.getElementById('removePointButton').addEventListener('click', function() {
       if (currentPoint) {
+        // Supprimer le texte associé à ce point
+        tags = tags.filter(tagData => {
+          if (tagData.point === currentPoint) {
+            document.body.removeChild(tagData.tag);  // Supprimer le tag texte de la page
+            return false;
+          }
+          return true;
+        });
+
+        // Supprimer le point
         scene.remove(currentPoint);
         contextMenu.style.display = 'none';
       }
@@ -335,7 +345,7 @@
 
       // Mettre à jour les positions des tags
       tags.forEach(tagData => {
-        const screenPos = toScreenPosition(tagData.point);
+        const screenPos = toScreenPosition(tagData.point.position);
         tagData.tag.style.left = `${screenPos.x}px`;
         tagData.tag.style.top = `${screenPos.y}px`;
       });
