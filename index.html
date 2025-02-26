@@ -50,6 +50,30 @@
       padding: 5px;
       border-radius: 5px;
     }
+
+    /* Menu contextuel */
+    .context-menu {
+      position: absolute;
+      background-color: #333;
+      color: white;
+      border-radius: 5px;
+      padding: 10px;
+      display: none;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.5);
+      z-index: 100;
+    }
+    .context-menu button {
+      background: none;
+      border: none;
+      color: white;
+      padding: 5px 10px;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+    }
+    .context-menu button:hover {
+      background-color: #555;
+    }
   </style>
 </head>
 <body>
@@ -67,6 +91,11 @@
 
   <input type="file" id="fileInput" accept=".xyz, .txt" style="display:none;">
   
+  <div id="contextMenu" class="context-menu">
+    <button id="addTextButton">Ajouter du texte</button>
+    <button id="removePointButton">Supprimer le point</button>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
@@ -79,6 +108,8 @@
     let tags = [];
     let isAddingPoint = false;  // Indicateur pour savoir si le bouton "Ajouter un point" est actif
     let tempSphere = null;  // Sphère temporaire affichée quand on est en mode ajout
+    let contextMenu = document.getElementById('contextMenu');
+    let currentPoint = null;
 
     // Initialisation de la scène
     function init() {
@@ -235,7 +266,7 @@
       }
     });
 
-    // Clic droit sur un point vert pour ajouter un texte
+    // Clic droit sur un point vert pour afficher le menu contextuel
     document.addEventListener('contextmenu', function(event) {
       event.preventDefault();
       const mouse = new THREE.Vector2();
@@ -248,34 +279,39 @@
       const intersects = raycaster.intersectObjects(scene.children);
       if (intersects.length > 0 && intersects[0].object.material.color.getHex() === 0x00ff00) {
         // Si on clique droit sur une sphère verte
-        const point = intersects[0].point;
-        const text = prompt("Ajouter un texte :");
-        if (text) {
-          const tag = document.createElement('div');
-          tag.className = 'tag';
-          tag.innerText = text;
-          document.body.appendChild(tag);
-          tag.style.left = `${event.clientX}px`;
-          tag.style.top = `${event.clientY}px`;
-
-          tags.push({ point: point, text: text, tag: tag });
-        }
+        currentPoint = intersects[0].object;
+        contextMenu.style.left = `${event.clientX}px`;
+        contextMenu.style.top = `${event.clientY}px`;
+        contextMenu.style.display = 'block';
       }
     });
 
-    // Animer la scène
-    function animate() {
-      requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
+    // Ajouter du texte au point vert
+    document.getElementById('addTextButton').addEventListener('click', function() {
+      const text = prompt("Ajouter un texte :");
+      if (text && currentPoint) {
+        const tag = document.createElement('div');
+        tag.className = 'tag';
+        tag.innerText = text;
+        document.body.appendChild(tag);
+        
+        // Convertir les coordonnées du point vert pour afficher le texte
+        const screenPos = toScreenPosition(currentPoint.position);
+        tag.style.left = `${screenPos.x}px`;
+        tag.style.top = `${screenPos.y}px`;
+        
+        tags.push({ point: currentPoint.position, text: text, tag: tag });
+        contextMenu.style.display = 'none';
+      }
+    });
 
-      // Mettre à jour les positions des tags
-      tags.forEach(tagData => {
-        const screenPos = toScreenPosition(tagData.point);
-        tagData.tag.style.left = `${screenPos.x}px`;
-        tagData.tag.style.top = `${screenPos.y}px`;
-      });
-    }
+    // Supprimer le point vert
+    document.getElementById('removePointButton').addEventListener('click', function() {
+      if (currentPoint) {
+        scene.remove(currentPoint);
+        contextMenu.style.display = 'none';
+      }
+    });
 
     // Convertir les coordonnées 3D en coordonnées de l'écran
     function toScreenPosition(point) {
@@ -289,6 +325,20 @@
         x: (vector.x * widthHalf) + widthHalf,
         y: -(vector.y * heightHalf) + heightHalf
       };
+    }
+
+    // Animer la scène
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+
+      // Mettre à jour les positions des tags
+      tags.forEach(tagData => {
+        const screenPos = toScreenPosition(tagData.point);
+        tagData.tag.style.left = `${screenPos.x}px`;
+        tagData.tag.style.top = `${screenPos.y}px`;
+      });
     }
   </script>
 </body>
