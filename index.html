@@ -30,7 +30,7 @@
 </head>
 <body>
   <div class="controls">
-    <button id="resetCloud">Modèle 3D</button>
+    <button id="resetCloud">Réinitialiser la scène</button>
     <button id="selectPoints">Sélectionner des points</button>
     <br>
     <label for="sizeSlider">Taille des points:</label>
@@ -47,13 +47,13 @@
     let selecting = false;
     let selectedPoints = [];
 
-    // Initialisation de la scène
     function init() {
+      // Initialisation de la scène
       scene = new THREE.Scene();
 
-      // Création de la caméra
+      // Caméra
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.z = 5;  // Positionner la caméra un peu en arrière
+      camera.position.z = 5; // Positionner la caméra un peu en arrière
 
       // Création du renderer
       renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -63,7 +63,7 @@
       // Fixer la couleur de fond à noir
       renderer.setClearColor(0x000000, 1); // Fond noir
 
-      // Contrôles de la caméra (rotation, zoom, etc.)
+      // Contrôles pour la caméra
       controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.25;
@@ -79,23 +79,23 @@
       selectedPoints = [];
     }
 
-    // Écouteur pour le bouton "Modèle 3D"
+    // Événements des boutons
     document.getElementById('resetCloud').addEventListener('click', function() {
       resetScene();
     });
 
-    // Activer/désactiver la sélection des points
     document.getElementById('selectPoints').addEventListener('click', function() {
       selecting = !selecting;
+      console.log("Mode de sélection activé: " + selecting);
     });
 
-    // Écouteur pour le slider de taille des points
+    // Changement de la taille des points via le slider
     document.getElementById('sizeSlider').addEventListener('input', function(event) {
       pointSize = parseFloat(event.target.value);
       clouds.forEach(cloud => cloud.material.size = pointSize);
     });
 
-    // Créer un nuage de points factice
+    // Fonction pour créer un nuage de points factice
     function createDummyPointCloud() {
       const geometry = new THREE.BufferGeometry();
       const positions = new Float32Array(3 * 100);  // 100 points
@@ -130,7 +130,7 @@
       renderer.render(scene, camera);
     }
 
-    // Clic pour sélectionner des points
+    // Sélectionner des points
     renderer.domElement.addEventListener('click', function(event) {
       if (!selecting) return;
 
@@ -152,7 +152,7 @@
           circle.position.copy(point);
           scene.add(circle);
 
-          // Interaction avec le clic droit sur le point
+          // Interaction clic droit sur le point
           circle.addEventListener('contextmenu', function(event) {
             event.preventDefault(); // Empêche le menu contextuel par défaut
             const text = prompt("Ajouter un tag :");
@@ -173,7 +173,7 @@
     });
 
     // Créer un nuage de points pour tester
-    createDummyPointCloud();  // À enlever si tu charges des nuages via fichiers
+    createDummyPointCloud();  // Nuage de points factice pour le test
 
     init();
   </script>
