@@ -68,10 +68,10 @@
       renderer.setClearColor(0x000000); // Fond noir
       document.body.appendChild(renderer.domElement);
 
-      camera.position.z = 1; // 5
+      camera.position.z = 10; // 5
       controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
-      controls.dampingFactor = 0.1; // 0.25
+      controls.dampingFactor = 1; // 0.25
       
       animate();
     }
