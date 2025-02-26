@@ -68,10 +68,10 @@
       renderer.setClearColor(0x000000); // Fond noir
       document.body.appendChild(renderer.domElement);
 
-      camera.position.z = 5;
+      camera.position.z = 1; //5
       controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
-      controls.dampingFactor = 0.25;
+      controls.dampingFactor = 0.1; //
       
       animate();
     }
@@ -100,13 +100,13 @@
         line = line.trim();
         if (line !== "") {
           const parts = line.split(/\s+/);
-          if (parts.length >= 7) {
+          if (parts.length >= 6) {
             const x = parseFloat(parts[0]);
             const y = parseFloat(parts[1]);
             const z = parseFloat(parts[2]);
-            const r = parseInt(parts[4], 10) / 255;
-            const g = parseInt(parts[5], 10) / 255;
-            const b = parseInt(parts[6], 10) / 255;
+            const r = parseInt(parts[3], 10) / 255;
+            const g = parseInt(parts[4], 10) / 255;
+            const b = parseInt(parts[5], 10) / 255;
             if (!isNaN(x) && !isNaN(y) && !isNaN(z) && !isNaN(r) && !isNaN(g) && !isNaN(b)) {
               positions.push(x, y, z);
               colors.push(r, g, b);
