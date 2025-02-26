@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nuage de Points 3D Centré</title>
+  <title>Nuage de Points 3D</title>
   <style>
     body { margin: 0; }
     canvas { display: block; }
@@ -17,15 +17,22 @@
       border-radius: 5px;
       color: white;
     }
-    input, button {
-      margin-top: 5px;
+    input, button { margin-top: 5px; }
+    .tag {
+      position: absolute;
+      background: white;
+      padding: 5px;
+      border: 1px solid black;
+      border-radius: 5px;
+      display: none;
     }
   </style>
 </head>
 <body>
   <div class="controls">
-    <input type="file" id="fileInput" accept=".xyz, .txt">
+    <button id="resetCloud">Modèle 3D</button>
     <button id="addCloud">Ajouter un nuage</button>
+    <button id="selectPoints">Sélectionner des points</button>
     <br>
     <label for="sizeSlider">Taille des points:</label>
     <input type="range" id="sizeSlider" min="0.001" max="0.005" step="0.001" value="0.002">
@@ -38,6 +45,8 @@
     let scene, camera, renderer, controls;
     let pointSize = 0.002;
     let clouds = [];
+    let selecting = false;
+    let selectedPoints = [];
 
     function init() {
       scene = new THREE.Scene();
@@ -48,20 +57,28 @@
 
       controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
-      controls.dampingFactor = 0.1;
-      controls.screenSpacePanning = false;
-      controls.maxDistance = 500;
-      controls.minDistance = 1;
 
       animate();
     }
 
-    document.getElementById('fileInput').addEventListener('change', function(event) {
-      loadPointCloud(event.target.files[0]);
+    function resetScene() {
+      clouds.forEach(cloud => scene.remove(cloud));
+      selectedPoints.forEach(p => scene.remove(p.point));
+      clouds = [];
+      selectedPoints = [];
+    }
+
+    document.getElementById('resetCloud').addEventListener('click', function() {
+      resetScene();
+      document.getElementById('fileInput').click();
     });
 
     document.getElementById('addCloud').addEventListener('click', function() {
       document.getElementById('fileInput').click();
+    });
+
+    document.getElementById('selectPoints').addEventListener('click', function() {
+      selecting = !selecting;
     });
 
     document.getElementById('sizeSlider').addEventListener('input', function(event) {
@@ -143,7 +160,7 @@
     function fitCameraToScene() {
       const box = new THREE.Box3();
       clouds.forEach(cloud => box.expandByObject(cloud));
-      
+
       const size = box.getSize(new THREE.Vector3());
       const center = box.getCenter(new THREE.Vector3());
 
@@ -158,16 +175,43 @@
       controls.update();
     }
 
-    function animate() {
-      requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
-    }
+    renderer.domElement.addEventListener('click', function(event) {
+      if (!selecting) return;
 
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      const mouse = new THREE.Vector2(
+        (event.clientX / window.innerWidth) * 2 - 1,
+        -(event.clientY / window.innerHeight) * 2 + 1
+      );
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+
+      clouds.forEach(cloud => {
+        const intersects = raycaster.intersectObject(cloud);
+        if (intersects.length > 0) {
+          const point = intersects[0].point;
+          const geometry = new THREE.CircleGeometry(0.05, 32);
+          const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+          const circle = new THREE.Mesh(geometry, material);
+          circle.position.copy(point);
+          scene.add(circle);
+
+          circle.addEventListener('contextmenu', function() {
+            const text = prompt("Ajouter un tag :");
+            if (text) {
+              const div = document.createElement('div');
+              div.className = 'tag';
+              div.innerText = text;
+              document.body.appendChild(div);
+              div.style.left = `${event.clientX}px`;
+              div.style.top = `${event.clientY}px`;
+              div.style.display = 'block';
+            }
+          });
+
+          selectedPoints.push({ point, circle });
+        }
+      });
     });
 
     init();
