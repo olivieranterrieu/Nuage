@@ -177,25 +177,21 @@
     }
 
 
+// Ajoute ce code dans ton script actuel
 
+// Bouton Projection 2D3D
+document.getElementById('addProjectionButton').addEventListener('click', function() {
+  if (selectedPoints.length < 4) {
+    isSelectingPoints = true; // Activer le mode de sélection des points
+    selectedPoints = []; // Réinitialiser les points sélectionnés
+    spheres.forEach(sphere => scene.remove(sphere)); // Supprimer les sphères existantes
+    spheres = []; // Réinitialiser le tableau des sphères
+  } else {
+    addRedSpheresToSelectedPoints(); // Si 4 points sont déjà sélectionnés, ajouter les sphères rouges
+  }
+});
 
-
-
-    
-// Fonction pour ajouter des sphères rouges aux points sélectionnés
-function addRedSpheresToSelectedPoints() {
-  // Ajouter des sphères rouges à chaque point sélectionné
-  selectedPoints.forEach(point => {
-    const sphere = new THREE.Mesh(
-      new THREE.SphereGeometry(0.2, 32, 32),
-      new THREE.MeshBasicMaterial({ color: 0xff0000 })
-    );
-    sphere.position.copy(point);
-    scene.add(sphere);
-    spheres.push(sphere);
-  });
-}
-// Fonction pour sélectionner un point dans le nuage
+// Fonction de sélection des points
 function selectPoint(event) {
   if (selectedPoints.length < 4 && isSelectingPoints) {
     const mouse = new THREE.Vector2();
@@ -212,12 +208,29 @@ function selectPoint(event) {
       if (selectedPoints.length === 4) {
         // Lorsque 4 points sont sélectionnés, afficher les sphères et charger l'image
         addRedSpheresToSelectedPoints();
-        openImageLoader();
+        openImageLoader();  // Charge l'image sur le plan
       }
     }
   }
 }
 
+// Fonction pour ajouter des sphères rouges aux points sélectionnés
+function addRedSpheresToSelectedPoints() {
+  // Ajouter des sphères rouges à chaque point sélectionné
+  selectedPoints.forEach(point => {
+    const sphere = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 32, 32),
+      new THREE.MeshBasicMaterial({ color: 0xff0000 })
+    );
+    sphere.position.copy(point);
+    scene.add(sphere);
+    spheres.push(sphere);
+  });
+}
+
+
+
+    
 // Fonction pour ouvrir la fenêtre de chargement d'image
 function openImageLoader() {
   const input = document.createElement('input');
@@ -462,13 +475,7 @@ document.getElementById('addPointButton').addEventListener('click', function() {
         y: -(vector.y * heightHalf) + heightHalf
       };
     }
-
-
-document.getElementById('addProjectionButton').addEventListener('click', function() {
-  addRedSpheresToSelectedPoints();  // Appel de la fonction ici
-});
-//----------------------------------------------------------------------------------------------------------
-    
+  
     // Animer la scène
     function animate() {
       requestAnimationFrame(animate);
