@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Affichage Nuage de Points 3Da</title>
+  <title>Affichage Nuage de Points 3D</title>
   <style>
     body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
     canvas { display: block; }
@@ -178,6 +178,8 @@
 
 
 //--------------------------------------------------------------------------------------------------------------------------
+
+
 // Clic sur le bouton "Projection 2D3D"
 document.getElementById('addProjectionButton').addEventListener('click', function() {
   if (selectedPoints.length < 4) {
@@ -205,7 +207,8 @@ function selectPoint(event) {
     raycaster.setFromCamera(mouse, camera);
 
     // Intersecter les objets dans la scène
-    const intersects = raycaster.intersectObjects(scene.children);
+    const intersects = raycaster.intersectObjects(scene.children, true);  // Vérifier tous les objets de la scène
+
     if (intersects.length > 0) {
       const point = intersects[0].point;
       // Ajouter ce point au tableau
@@ -288,6 +291,10 @@ function projectImageOnSurface(points, imageURL) {
   spheres.forEach(sphere => scene.remove(sphere));  // Retirer les sphères de la scène
   spheres = [];  // Réinitialiser les sphères
 }
+
+// Ajouter un écouteur d'événements pour la sélection de points par clic dans le nuage
+window.addEventListener('click', selectPoint);
+
 //--------------------------------------------------------------------------------------------------------------------------
 
     
