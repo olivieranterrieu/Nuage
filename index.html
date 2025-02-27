@@ -178,20 +178,20 @@
 
 
 //--------------------------------------------------------------------------------------------------------------------------
-// Partie 1: Affichage des points au fur et à mesure
-
+// Clic pour activer la sélection de points
 document.getElementById('addProjectionButton').addEventListener('click', function() {
   if (selectedPoints.length < 4) {
     isSelectingPoints = true; // Activer la sélection des points
-    spheres.forEach(sphere => scene.remove(sphere)); // Supprimer les anciennes sphères
+    // Réinitialiser les anciens points (si nécessaire)
+    spheres.forEach(sphere => scene.remove(sphere)); 
     spheres = []; // Réinitialiser le tableau des sphères
   } else {
-    // Si les 4 points sont déjà sélectionnés, procéder à la projection de l'image
+    // Si 4 points sont déjà sélectionnés, projeter l'image
     projectImageOnSurface(selectedPoints);
   }
 });
 
-// Fonction de sélection des points
+// Fonction de sélection des points par clic
 function selectPoint(event) {
   if (selectedPoints.length < 4 && isSelectingPoints) {
     const mouse = new THREE.Vector2();
@@ -218,11 +218,10 @@ function addRedSphereToPoint(point) {
   );
   sphere.position.copy(point);
   scene.add(sphere);
-  spheres.push(sphere);
+  spheres.push(sphere); // Ajouter la sphère à l'array pour gestion future
 }
 
-// Partie 2: Projeter l'image sur la surface définie par les points
-
+// Fonction de projection de l'image sur la surface définie par les points
 function projectImageOnSurface(points) {
   if (points.length < 4) return;
 
@@ -231,7 +230,6 @@ function projectImageOnSurface(points) {
   geometry.vertices.push(...points); // Ajoute les 4 points comme sommets
 
   // Créer un plan ou une surface approximée à partir des points
-  // Ici, nous allons simplement définir un "plan" à partir des points pour la projection
   const normal = new THREE.Vector3();
   const v0 = points[0];
   const v1 = points[1];
@@ -261,12 +259,6 @@ function projectImageOnSurface(points) {
   // Ajouter la surface projetée à la scène
   scene.add(projectedSurface);
 }
-
-
-
-
-
-
 //--------------------------------------------------------------------------------------------------------------------------
 
     
