@@ -79,10 +79,9 @@
 <body>
   <div id="header">
     <div>
-      <button id="addModelButton">Modèle 3D</button>
+      <button id="addModelButton">Modele 3D</button>
       <button id="addMapButton">Cartographie</button>
       <button id="addPointButton">Ajouter un point</button>
-      <button id="projection3DButton">Projection 3D</button>
     </div>
     <div class="slider-container">
       <span>Point Size:</span>
@@ -90,8 +89,7 @@
     </div>
   </div>
 
-  <input type="file" id="fileInputModel" accept=".xyz, .txt" style="display:none;">
-  <input type="file" id="fileInputMap" accept=".xyz, .txt" style="display:none;">
+  <input type="file" id="fileInput" accept=".xyz, .txt" style="display:none;">
   
   <div id="contextMenu" class="context-menu">
     <button id="addTextButton">Ajouter du texte</button>
@@ -113,11 +111,6 @@
     let contextMenu = document.getElementById('contextMenu');
     let currentPoint = null;
 
-    // Variables pour la Projection 3D
-    let isProjecting3D = false;
-    let selectedPointsForProjection = [];
-    let textureLoader = new THREE.TextureLoader();
-
     // Initialisation de la scène
     function init() {
       scene = new THREE.Scene();
@@ -137,63 +130,102 @@
 
     init();
 
-    // Fonction pour charger un fichier de nuage de points
-    function loadPointCloud(fileInput) {
-      const file = fileInput.files[0];
+    // Chargement du fichier
+    document.getElementById('fileInput').addEventListener('change', function(event) {
+      const file = event.target.files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = function(event) {
-          const content = event.target.result;
-          const lines = content.split('\n');
-          lines.forEach(line => {
-            const columns = line.trim().split(/\s+/);
-            if (columns.length >= 7) {
-              const x = parseFloat(columns[0]);
-              const y = parseFloat(columns[1]);
-              const z = parseFloat(columns[2]);
-              const r = parseInt(columns[4]);
-              const g = parseInt(columns[5]);
-              const b = parseInt(columns[6]);
-              addPointToSceneFromFile(x, y, z, r, g, b);
-            }
-          });
+        reader.onload = function(e) {
+          const content = e.target.result;
+          const points = parseXYZ(content);
+          createPointCloud(points);
         };
         reader.readAsText(file);
       }
-    }
-
-    // Ajouter un point à la scène en fonction des données du fichier
-    function addPointToSceneFromFile(x, y, z, r, g, b) {
-      const geometry = new THREE.SphereGeometry(pointSize);
-      const material = new THREE.MeshBasicMaterial({ color: new THREE.Color(r / 255, g / 255, b / 255) });
-      const sphere = new THREE.Mesh(geometry, material);
-      sphere.position.set(x, y, z);
-      scene.add(sphere);
-      pointClouds.push(sphere);
-    }
-
-    // Gestion du bouton "Modèle 3D" pour charger un nuage de points
-    document.getElementById('addModelButton').addEventListener('click', function() {
-      document.getElementById('fileInputModel').click();
-      document.getElementById('fileInputModel').addEventListener('change', function(event) {
-        loadPointCloud(event.target);
-      });
     });
 
-    // Gestion du bouton "Cartographie" pour charger un autre nuage de points
-    document.getElementById('addMapButton').addEventListener('click', function() {
-      document.getElementById('fileInputMap').click();
-      document.getElementById('fileInputMap').addEventListener('change', function(event) {
-        loadPointCloud(event.target);
+    // Parser les données XYZ
+    function parseXYZ(data) {
+      const lines = data.split('\n');
+      const positions = [];
+      const colors = [];
+
+      lines.forEach(line => {
+        line = line.trim();
+        if (line !== "") {
+          const parts = line.split(/\s+/);
+          if (parts.length >= 7) {
+            const x = parseFloat(parts[0]);
+            const y = parseFloat(parts[1]);
+            const z = parseFloat(parts[2]);
+            const r = parseInt(parts[4], 10) / 255;
+            const g = parseInt(parts[5], 10) / 255;
+            const b = parseInt(parts[6], 10) / 255;
+            if (!isNaN(x) && !isNaN(y) && !isNaN(z) && !isNaN(r) && !isNaN(g) && !isNaN(b)) {
+              positions.push(x, y, z);
+              colors.push(r, g, b);
+            }
+          }
+        }
       });
-    });
+
+      return { positions, colors };
+    }
+
+    // Créer un nuage de points
+    function createPointCloud(data) {
+      const geometry = new THREE.BufferGeometry();
+      const vertices = new Float32Array(data.positions);
+      const vertexColors = new Float32Array(data.colors);
+
+      geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+      geometry.setAttribute('color', new THREE.BufferAttribute(vertexColors, 3));
+
+      const material = new THREE.PointsMaterial({
+        size: pointSize,
+        vertexColors: true,
+        transparent: true,
+        alphaTest: 0.5
+      });
+
+      const pointCloud = new THREE.Points(geometry, material);
+      scene.add(pointCloud);
+      pointClouds.push(pointCloud);
+
+      fitCameraToScene();
+    }
+
+    // Ajuster la caméra pour centrer le nuage de points
+    function fitCameraToScene() {
+      const box = new THREE.Box3().setFromObject(pointClouds[pointClouds.length - 1]);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const fov = camera.fov * (Math.PI / 180);
+      const distance = Math.abs(maxDim / Math.sin(fov / 2));
+
+      camera.position.set(center.x, center.y, center.z + distance);
+      camera.lookAt(center);
+      controls.target.set(center.x, center.y, center.z);
+      controls.update();
+    }
 
     // Changer la taille des points
     document.getElementById('sizeSlider').addEventListener('input', function(event) {
       pointSize = parseFloat(event.target.value);
       pointClouds.forEach(cloud => {
-        cloud.scale.set(pointSize, pointSize, pointSize);
+        cloud.material.size = pointSize;
       });
+    });
+
+    // Charger le nuage principal (Modele 3D)
+    document.getElementById('addModelButton').addEventListener('click', function() {
+      document.getElementById('fileInput').click();
+    });
+
+    // Charger un nuage secondaire sans effacer le modèle 3D (Cartographie)
+    document.getElementById('addMapButton').addEventListener('click', function() {
+      document.getElementById('fileInput').click();
     });
 
     // Ajouter un point vert à la scène
@@ -215,18 +247,10 @@
       }
     });
 
-    // Projection 3D : Sélectionner 4 points et projeter une image
-    document.getElementById('projection3DButton').addEventListener('click', function() {
-      isProjecting3D = !isProjecting3D;
-      selectedPointsForProjection = [];
-      if (isProjecting3D) {
-        alert('Sélectionnez 4 points pour la projection 3D.');
-      }
-    });
-
-    // Sélectionner les points
+    // Sélectionner un point 3D et l'agrandir
     document.addEventListener('click', function(event) {
-      if (isProjecting3D && selectedPointsForProjection.length < 4) {
+      if (isAddingPoint && tempSphere) {
+        // Placer la sphère verte dans la scène à l'endroit cliqué
         const mouse = new THREE.Vector2();
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -237,57 +261,14 @@
         const intersects = raycaster.intersectObjects(scene.children);
         if (intersects.length > 0) {
           const point = intersects[0].point;
-          selectedPointsForProjection.push(point);
-
-          const marker = new THREE.Mesh(
-            new THREE.SphereGeometry(0.1, 16, 16),
-            new THREE.MeshBasicMaterial({ color: 0x0000ff })
-          );
-          marker.position.copy(point);
-          scene.add(marker);
-
-          if (selectedPointsForProjection.length === 4) {
-            alert('4 points sélectionnés. Chargez l\'image pour la projection.');
-            loadProjectionImage();
-          }
+          tempSphere.position.copy(point);
         }
       }
     });
 
-    // Charger l'image à projeter
-    function loadProjectionImage() {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = function(event) {
-        const file = event.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = function(e) {
-            const texture = textureLoader.load(e.target.result);
-            const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-            const geometry = new THREE.PlaneGeometry(10, 10);
-            const mesh = new THREE.Mesh(geometry, material);
-            scene.add(mesh);
-          };
-          reader.readAsDataURL(file);
-        }
-      };
-      input.click();
-    }
-
-    // Animation de la scène
-    function animate() {
-      requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
-    }
-
-    // Afficher un menu contextuel sur le clic droit
+    // Clic droit sur un point vert pour afficher le menu contextuel
     document.addEventListener('contextmenu', function(event) {
       event.preventDefault();
-
-      // Vérifier si un point a été sélectionné
       const mouse = new THREE.Vector2();
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -296,35 +277,79 @@
       raycaster.setFromCamera(mouse, camera);
 
       const intersects = raycaster.intersectObjects(scene.children);
-      if (intersects.length > 0) {
+      if (intersects.length > 0 && intersects[0].object.material.color.getHex() === 0x00ff00) {
+        // Si on clique droit sur une sphère verte
         currentPoint = intersects[0].object;
+        contextMenu.style.left = `${event.clientX}px`;
+        contextMenu.style.top = `${event.clientY}px`;
         contextMenu.style.display = 'block';
-        contextMenu.style.left = event.clientX + 'px';
-        contextMenu.style.top = event.clientY + 'px';
-      } else {
+      }
+    });
+
+    // Ajouter du texte au point vert
+    document.getElementById('addTextButton').addEventListener('click', function() {
+      const text = prompt("Ajouter un texte :");
+      if (text && currentPoint) {
+        const tag = document.createElement('div');
+        tag.className = 'tag';
+        tag.innerText = text;
+        document.body.appendChild(tag);
+        
+        // Convertir les coordonnées du point vert pour afficher le texte
+        const screenPos = toScreenPosition(currentPoint.position);
+        tag.style.left = `${screenPos.x}px`;
+        tag.style.top = `${screenPos.y}px`;
+        
+        tags.push({ point: currentPoint, text: text, tag: tag });
         contextMenu.style.display = 'none';
       }
     });
 
-    // Ajouter un texte à côté du point sélectionné
-    document.getElementById('addTextButton').addEventListener('click', function() {
-      if (currentPoint) {
-        const textDiv = document.createElement('div');
-        textDiv.classList.add('tag');
-        textDiv.style.left = currentPoint.position.x + 'px';
-        textDiv.style.top = currentPoint.position.y + 'px';
-        textDiv.innerText = prompt('Entrez le texte à afficher :');
-        document.body.appendChild(textDiv);
-      }
-    });
-
-    // Supprimer le point sélectionné
+    // Supprimer le point vert et le texte associé
     document.getElementById('removePointButton').addEventListener('click', function() {
       if (currentPoint) {
+        // Supprimer le texte associé à ce point
+        tags = tags.filter(tagData => {
+          if (tagData.point === currentPoint) {
+            document.body.removeChild(tagData.tag);  // Supprimer le tag texte de la page
+            return false;
+          }
+          return true;
+        });
+
+        // Supprimer le point
         scene.remove(currentPoint);
         contextMenu.style.display = 'none';
       }
     });
+
+    // Convertir les coordonnées 3D en coordonnées de l'écran
+    function toScreenPosition(point) {
+      const vector = new THREE.Vector3(point.x, point.y, point.z);
+      vector.project(camera);
+
+      const widthHalf = 0.5 * window.innerWidth;
+      const heightHalf = 0.5 * window.innerHeight;
+
+      return {
+        x: (vector.x * widthHalf) + widthHalf,
+        y: -(vector.y * heightHalf) + heightHalf
+      };
+    }
+
+    // Animer la scène
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+
+      // Mettre à jour les positions des tags
+      tags.forEach(tagData => {
+        const screenPos = toScreenPosition(tagData.point.position);
+        tagData.tag.style.left = `${screenPos.x}px`;
+        tagData.tag.style.top = `${screenPos.y}px`;
+      });
+    }
   </script>
 </body>
 </html>
