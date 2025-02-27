@@ -77,6 +77,7 @@
   </style>
 </head>
 <body>
+  <!-- Entête contenant les boutons -->
   <div id="header">
     <div>
       <button id="addModelButton">Modele 3D</button>
@@ -89,62 +90,66 @@
     </div>
   </div>
 
+  <!-- Champ de fichier caché pour charger des fichiers -->
   <input type="file" id="fileInput" accept=".xyz, .txt" style="display:none;">
   
+  <!-- Menu contextuel qui apparaît au clic droit sur un point -->
   <div id="contextMenu" class="context-menu">
     <button id="addTextButton">Ajouter du texte</button>
     <button id="removePointButton">Supprimer le point</button>
   </div>
 
+  <!-- Inclusion des bibliothèques Three.js pour le rendu 3D -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
   <script>
+    // Déclarations des variables
     let scene, camera, renderer, controls;
-    let pointClouds = [];  // Support pour plusieurs nuages
+    let pointClouds = [];  // Liste des nuages de points chargés
     let pointSize = 0.01;
     let selectedPoints = [];
     let selectedMarker;
     let tags = [];
-    let isAddingPoint = false;  // Indicateur pour savoir si le bouton "Ajouter un point" est actif
-    let tempSphere = null;  // Sphère temporaire affichée quand on est en mode ajout
+    let isAddingPoint = false;  // Indicateur pour savoir si l'ajout d'un point est actif
+    let tempSphere = null;  // Référence à la sphère temporaire pendant l'ajout de point
     let contextMenu = document.getElementById('contextMenu');
     let currentPoint = null;
 
-    // Initialisation de la scène
+    // Initialisation de la scène 3D
     function init() {
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setClearColor(0x000000); // Fond noir
+      renderer.setClearColor(0x000000); // Fond noir pour la scène
       document.body.appendChild(renderer.domElement);
 
-      camera.position.z = 10;
-      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      camera.position.z = 10; // Position initiale de la caméra
+      controls = new THREE.OrbitControls(camera, renderer.domElement); // Contrôles pour déplacer la caméra
       controls.enableDamping = true;
       controls.dampingFactor = 0.25;
 
-      animate();
+      animate();  // Lancer l'animation
     }
 
-    init();
+    init();  // Appel de la fonction d'initialisation
 
-    // Chargement du fichier
+    // Chargement du fichier de nuage de points
     document.getElementById('fileInput').addEventListener('change', function(event) {
       const file = event.target.files[0];
       if (file) {
         const reader = new FileReader();
         reader.onload = function(e) {
           const content = e.target.result;
-          const points = parseXYZ(content);
-          createPointCloud(points);
+          const points = parseXYZ(content); // Parser les points depuis le fichier
+          createPointCloud(points);  // Créer et afficher le nuage de points
         };
         reader.readAsText(file);
       }
     });
 
-    // Parser les données XYZ
+    // Fonction pour parser les données XYZ du fichier
     function parseXYZ(data) {
       const lines = data.split('\n');
       const positions = [];
@@ -162,17 +167,17 @@
             const g = parseInt(parts[5], 10) / 255;
             const b = parseInt(parts[6], 10) / 255;
             if (!isNaN(x) && !isNaN(y) && !isNaN(z) && !isNaN(r) && !isNaN(g) && !isNaN(b)) {
-              positions.push(x, y, z);
-              colors.push(r, g, b);
+              positions.push(x, y, z);  // Ajouter les coordonnées du point
+              colors.push(r, g, b);  // Ajouter les couleurs RGB
             }
           }
         }
       });
 
-      return { positions, colors };
+      return { positions, colors };  // Retourner les données sous forme d'objet
     }
 
-    // Créer un nuage de points
+    // Créer un nuage de points à partir des données
     function createPointCloud(data) {
       const geometry = new THREE.BufferGeometry();
       const vertices = new Float32Array(data.positions);
@@ -189,13 +194,13 @@
       });
 
       const pointCloud = new THREE.Points(geometry, material);
-      scene.add(pointCloud);
-      pointClouds.push(pointCloud);
+      scene.add(pointCloud);  // Ajouter le nuage de points à la scène
+      pointClouds.push(pointCloud);  // Ajouter à la liste des nuages de points
 
-      fitCameraToScene();
+      fitCameraToScene();  // Ajuster la caméra pour bien voir le nuage de points
     }
 
-    // Ajuster la caméra pour centrer le nuage de points
+    // Ajuster la caméra pour centrer le nuage de points dans la vue
     function fitCameraToScene() {
       const box = new THREE.Box3().setFromObject(pointClouds[pointClouds.length - 1]);
       const size = box.getSize(new THREE.Vector3());
@@ -205,12 +210,12 @@
       const distance = Math.abs(maxDim / Math.sin(fov / 2));
 
       camera.position.set(center.x, center.y, center.z + distance);
-      camera.lookAt(center);
-      controls.target.set(center.x, center.y, center.z);
+      camera.lookAt(center);  // Regarder vers le centre du nuage
+      controls.target.set(center.x, center.y, center.z);  // Fixer le centre de rotation des contrôles
       controls.update();
     }
 
-    // Changer la taille des points
+    // Mettre à jour la taille des points via le slider
     document.getElementById('sizeSlider').addEventListener('input', function(event) {
       pointSize = parseFloat(event.target.value);
       pointClouds.forEach(cloud => {
@@ -218,28 +223,28 @@
       });
     });
 
-    // Charger le nuage principal (Modele 3D)
+    // Charger un nuage de points en tant que modèle 3D
     document.getElementById('addModelButton').addEventListener('click', function() {
       document.getElementById('fileInput').click();
     });
 
-    // Charger un nuage secondaire sans effacer le modèle 3D (Cartographie)
+    // Charger un nuage secondaire (cartographie)
     document.getElementById('addMapButton').addEventListener('click', function() {
       document.getElementById('fileInput').click();
     });
 
     // Ajouter un point vert à la scène
     document.getElementById('addPointButton').addEventListener('click', function() {
-      isAddingPoint = !isAddingPoint;
+      isAddingPoint = !isAddingPoint;  // Alterner l'état de l'ajout de point
       if (isAddingPoint) {
-        // Afficher une sphère verte sous le curseur
+        // Créer une sphère verte temporaire pour l'ajout de point
         tempSphere = new THREE.Mesh(
           new THREE.SphereGeometry(0.1, 32, 32),
           new THREE.MeshBasicMaterial({ color: 0x00ff00 })
         );
-        scene.add(tempSphere);
+        scene.add(tempSphere);  // Ajouter la sphère à la scène
       } else {
-        // Cacher la sphère temporaire
+        // Retirer la sphère temporaire de la scène
         if (tempSphere) {
           scene.remove(tempSphere);
           tempSphere = null;
@@ -247,10 +252,10 @@
       }
     });
 
-    // Sélectionner un point 3D et l'agrandir
+    // Sélectionner un point cliqué dans la scène
     document.addEventListener('click', function(event) {
       if (isAddingPoint && tempSphere) {
-        // Placer la sphère verte dans la scène à l'endroit cliqué
+        // Utiliser le raycaster pour placer la sphère sur un point cliqué
         const mouse = new THREE.Vector2();
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -261,12 +266,12 @@
         const intersects = raycaster.intersectObjects(scene.children);
         if (intersects.length > 0) {
           const point = intersects[0].point;
-          tempSphere.position.copy(point);
+          tempSphere.position.copy(point);  // Placer la sphère à cet endroit
         }
       }
     });
 
-    // Clic droit sur un point vert pour afficher le menu contextuel
+    // Afficher le menu contextuel au clic droit sur un point vert
     document.addEventListener('contextmenu', function(event) {
       event.preventDefault();
       const mouse = new THREE.Vector2();
@@ -278,52 +283,52 @@
 
       const intersects = raycaster.intersectObjects(scene.children);
       if (intersects.length > 0 && intersects[0].object.material.color.getHex() === 0x00ff00) {
-        // Si on clique droit sur une sphère verte
+        // Si clic droit sur un point vert
         currentPoint = intersects[0].object;
         contextMenu.style.left = `${event.clientX}px`;
         contextMenu.style.top = `${event.clientY}px`;
-        contextMenu.style.display = 'block';
+        contextMenu.style.display = 'block';  // Afficher le menu contextuel
       }
     });
 
-    // Ajouter du texte au point vert
+    // Ajouter un texte au point vert sélectionné
     document.getElementById('addTextButton').addEventListener('click', function() {
       const text = prompt("Ajouter un texte :");
       if (text && currentPoint) {
         const tag = document.createElement('div');
         tag.className = 'tag';
         tag.innerText = text;
-        document.body.appendChild(tag);
+        document.body.appendChild(tag);  // Ajouter le texte à la page
         
-        // Convertir les coordonnées du point vert pour afficher le texte
+        // Convertir la position du point en coordonnées écran pour afficher le texte
         const screenPos = toScreenPosition(currentPoint.position);
         tag.style.left = `${screenPos.x}px`;
         tag.style.top = `${screenPos.y}px`;
-        
+
         tags.push({ point: currentPoint, text: text, tag: tag });
         contextMenu.style.display = 'none';
       }
     });
 
-    // Supprimer le point vert et le texte associé
+    // Supprimer un point et son texte associé
     document.getElementById('removePointButton').addEventListener('click', function() {
       if (currentPoint) {
         // Supprimer le texte associé à ce point
         tags = tags.filter(tagData => {
           if (tagData.point === currentPoint) {
-            document.body.removeChild(tagData.tag);  // Supprimer le tag texte de la page
+            document.body.removeChild(tagData.tag);  // Supprimer le tag texte
             return false;
           }
           return true;
         });
 
-        // Supprimer le point
+        // Supprimer le point de la scène
         scene.remove(currentPoint);
         contextMenu.style.display = 'none';
       }
     });
 
-    // Convertir les coordonnées 3D en coordonnées de l'écran
+    // Convertir les coordonnées 3D en coordonnées écran pour positionner les tags
     function toScreenPosition(point) {
       const vector = new THREE.Vector3(point.x, point.y, point.z);
       vector.project(camera);
@@ -337,18 +342,11 @@
       };
     }
 
-    // Animer la scène
+    // Fonction d'animation pour mettre à jour le rendu
     function animate() {
       requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
-
-      // Mettre à jour les positions des tags
-      tags.forEach(tagData => {
-        const screenPos = toScreenPosition(tagData.point.position);
-        tagData.tag.style.left = `${screenPos.x}px`;
-        tagData.tag.style.top = `${screenPos.y}px`;
-      });
+      controls.update();  // Mettre à jour les contrôles
+      renderer.render(scene, camera);  // Rendre la scène
     }
   </script>
 </body>
