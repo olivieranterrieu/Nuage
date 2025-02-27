@@ -243,6 +243,31 @@
       }
     });
 
+    // Clic sur la scène pour ajouter un point réel
+    document.addEventListener('click', function(event) {
+      if (isAddingPoint) {
+        const mouse = new THREE.Vector2();
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+
+        const intersects = raycaster.intersectObjects(scene.children);
+        if (intersects.length > 0) {
+          const point = intersects[0].point;
+          
+          // Ajouter un point réel dans la scène
+          const pointMarker = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1, 16, 16),
+            new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+          );
+          pointMarker.position.copy(point);
+          scene.add(pointMarker);
+        }
+      }
+    });
+
     // Projection 3D : Sélectionner 4 points et projeter une image
     document.getElementById('projection3DButton').addEventListener('click', function() {
       isProjecting3D = !isProjecting3D;
