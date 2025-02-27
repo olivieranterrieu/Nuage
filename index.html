@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Affichage Nuage de Points 3Da</title>
+  <title>Affichage Nuage de Points 3D</title>
   <style>
     body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
     canvas { display: block; }
@@ -179,7 +179,6 @@
 
 //--------------------------------------------------------------------------------------------------------------------------
 
-
 // Clic sur le bouton "Projection 2D3D"
 document.getElementById('addProjectionButton').addEventListener('click', function() {
   if (selectedPoints.length < 4) {
@@ -215,6 +214,10 @@ function selectPoint(event) {
       selectedPoints.push(point);
       // Afficher une sphère rouge à cet endroit
       addRedSphereToPoint(point);
+      if (selectedPoints.length === 4) {
+        // Une fois les 4 points sélectionnés, ouvrir la fenêtre de sélection d'image
+        openImageSelectionWindow();
+      }
     }
   }
 }
@@ -232,6 +235,8 @@ function addRedSphereToPoint(point) {
 
 // Fonction d'ouverture de la fenêtre de sélection d'image
 function openImageSelectionWindow() {
+  if (imageSelected) return;  // Si une image a déjà été sélectionnée, ne rien faire
+
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
@@ -299,6 +304,7 @@ function projectImageOnSurface(points, imageURL) {
   selectedPoints = [];  // Réinitialiser les points sélectionnés
   spheres.forEach(sphere => scene.remove(sphere));  // Retirer les sphères de la scène
   spheres = [];  // Réinitialiser les sphères
+  imageSelected = true;  // Marquer que l'image a été sélectionnée
 }
 
 // Ajouter un écouteur d'événements pour la sélection de points par clic dans le nuage
