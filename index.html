@@ -79,10 +79,10 @@
 <body>
   <div id="header">
     <div>
-      <button id="addModelButton">Modele 3D</button>
+      <button id="addModelButton">Modèle 3D</button>
       <button id="addMapButton">Cartographie</button>
       <button id="addPointButton">Ajouter un point</button>
-      <button id="projection3DButton">Projection 3D</button> <!-- Nouveau bouton -->
+      <button id="projection3DButton">Projection 3D</button>
     </div>
     <div class="slider-container">
       <span>Point Size:</span>
@@ -90,7 +90,8 @@
     </div>
   </div>
 
-  <input type="file" id="fileInput" accept=".xyz, .txt" style="display:none;">
+  <input type="file" id="fileInputModel" accept=".xyz, .txt" style="display:none;">
+  <input type="file" id="fileInputMap" accept=".xyz, .txt" style="display:none;">
   
   <div id="contextMenu" class="context-menu">
     <button id="addTextButton">Ajouter du texte</button>
@@ -107,12 +108,10 @@
     let selectedPoints = [];
     let selectedMarker;
     let tags = [];
-    let isAddingPoint = false;  // Indicateur pour savoir si le bouton "Ajouter un point" est actif
+    let isAddingPoint = false;
     let tempSphere = null;  // Sphère temporaire affichée quand on est en mode ajout
     let contextMenu = document.getElementById('contextMenu');
     let currentPoint = null;
-
-    // Variables pour la Projection 3D
     let isProjecting3D = false;
     let selectedPointsForProjection = [];
     let textureLoader = new THREE.TextureLoader();
@@ -136,22 +135,56 @@
 
     init();
 
-    // Chargement du fichier
-    document.getElementById('fileInput').addEventListener('change', function(event) {
-      const file = event.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          const content = e.target.result;
-          const points = parseXYZ(content);
-          createPointCloud(points);
-        };
-        reader.readAsText(file);
+    // Fonction de gestion du clic pour ajouter un point
+    function addPointToScene(event) {
+      if (isAddingPoint) {
+        const mouse = new THREE.Vector2();
+        const raycaster = new THREE.Raycaster();
+
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.update(camera, mouse);
+        const intersects = raycaster.intersectObject(scene, true);
+
+        if (intersects.length > 0) {
+          const point = intersects[0].point;
+          addPointToSceneVisual(point);
+        }
       }
+    }
+
+    // Fonction pour ajouter un point visuel
+    function addPointToSceneVisual(position) {
+      const geometry = new THREE.SphereGeometry(0.1);
+      const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const sphere = new THREE.Mesh(geometry, material);
+      sphere.position.copy(position);
+      scene.add(sphere);
+      selectedPoints.push(sphere);
+      fitCameraToScene();
+    }
+
+    // Fonction pour projeter des points en 3D
+    function projectPoints3D() {
+      if (selectedPointsForProjection.length > 1) {
+        const points = selectedPointsForProjection.map(p => p.position);
+        // Code pour projection en 3D ici
+      }
+    }
+
+    // Fonction pour charger un modèle 3D
+    document.getElementById('addModelButton').addEventListener('click', function() {
+      document.getElementById('fileInputModel').click();
     });
 
-    // Parser les données XYZ
-    function parseXYZ(data) {
+    // Charger une cartographie (autre nuage de points)
+    document.getElementById('addMapButton').addEventListener('click', function() {
+      document.getElementById('fileInputMap').click();
+    });
+
+    // Fonction pour parser les données XYZ avec RGB
+    function parseXYZWithRGB(data) {
       const lines = data.split('\n');
       const positions = [];
       const colors = [];
@@ -178,8 +211,8 @@
       return { positions, colors };
     }
 
-    // Créer un nuage de points
-    function createPointCloud(data) {
+    // Fonction pour créer un nuage de points avec des couleurs RGB
+    function createPointCloudWithColors(data) {
       const geometry = new THREE.BufferGeometry();
       const vertices = new Float32Array(data.positions);
       const vertexColors = new Float32Array(data.colors);
@@ -216,6 +249,34 @@
       controls.update();
     }
 
+    // Chargement du modèle 3D
+    document.getElementById('fileInputModel').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const content = e.target.result;
+          const points = parseXYZWithRGB(content);
+          createPointCloudWithColors(points);
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    // Chargement de la cartographie (autre nuage de points)
+    document.getElementById('fileInputMap').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const content = e.target.result;
+          const points = parseXYZWithRGB(content);
+          createPointCloudWithColors(points);
+        };
+        reader.readAsText(file);
+      }
+    });
+
     // Changer la taille des points
     document.getElementById('sizeSlider').addEventListener('input', function(event) {
       pointSize = parseFloat(event.target.value);
@@ -224,132 +285,21 @@
       });
     });
 
-    // Ajouter un point vert à la scène
+    // Activer ou désactiver l'ajout de point
     document.getElementById('addPointButton').addEventListener('click', function() {
       isAddingPoint = !isAddingPoint;
-      if (isAddingPoint) {
-        // Afficher une sphère verte sous le curseur
-        tempSphere = new THREE.Mesh(
-          new THREE.SphereGeometry(0.1, 32, 32),
-          new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-        );
-        scene.add(tempSphere);
-      } else {
-        // Cacher la sphère temporaire
-        if (tempSphere) {
-          scene.remove(tempSphere);
-          tempSphere = null;
-        }
-      }
+      tempSphere = null;
     });
 
-    // Clic sur la scène pour ajouter un point réel
-    document.addEventListener('click', function(event) {
-      if (isAddingPoint) {
-        const mouse = new THREE.Vector2();
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(mouse, camera);
-
-        const intersects = raycaster.intersectObjects(scene.children);
-        if (intersects.length > 0) {
-          const point = intersects[0].point;
-          
-          // Ajouter un point réel dans la scène
-          const pointMarker = new THREE.Mesh(
-            new THREE.SphereGeometry(0.1, 16, 16),
-            new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-          );
-          pointMarker.position.copy(point);
-          scene.add(pointMarker);
-        }
-      }
-    });
-
-    // Projection 3D : Sélectionner 4 points et projeter une image
+    // Activer la projection 3D
     document.getElementById('projection3DButton').addEventListener('click', function() {
       isProjecting3D = !isProjecting3D;
-      selectedPointsForProjection = [];
       if (isProjecting3D) {
-        alert('Sélectionnez 4 points pour la projection 3D.');
+        selectedPointsForProjection = selectedPoints.slice();
+      } else {
+        selectedPointsForProjection = [];
       }
     });
-
-    // Sélectionner les points
-    document.addEventListener('click', function(event) {
-      if (isProjecting3D && selectedPointsForProjection.length < 4) {
-        const mouse = new THREE.Vector2();
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(mouse, camera);
-
-        const intersects = raycaster.intersectObjects(scene.children);
-        if (intersects.length > 0) {
-          const point = intersects[0].point;
-          selectedPointsForProjection.push(point);
-
-          const marker = new THREE.Mesh(
-            new THREE.SphereGeometry(0.1, 16, 16),
-            new THREE.MeshBasicMaterial({ color: 0x0000ff })
-          );
-          marker.position.copy(point);
-          scene.add(marker);
-
-          if (selectedPointsForProjection.length === 4) {
-            alert('4 points sélectionnés. Chargez l\'image pour la projection.');
-            loadProjectionImage();
-          }
-        }
-      }
-    });
-
-    // Charger l'image à projeter
-    function loadProjectionImage() {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-          textureLoader.load(URL.createObjectURL(file), function(texture) {
-            projectImageOnSurface(texture);
-          });
-        }
-      };
-      input.click();
-    }
-
-    // Projeter l'image sur la surface
-    function projectImageOnSurface(texture) {
-      if (selectedPointsForProjection.length !== 4) {
-        alert("Sélectionnez d'abord 4 points.");
-        return;
-      }
-
-      const geometry = new THREE.Geometry();
-      geometry.vertices.push(...selectedPointsForProjection);
-
-      const face = new THREE.Face3(0, 1, 2);
-      const face2 = new THREE.Face3(0, 2, 3);
-      geometry.faces.push(face, face2);
-
-      geometry.computeFaceNormals();
-
-      const material = new THREE.MeshBasicMaterial({
-        map: texture,
-        side: THREE.DoubleSide,
-        transparent: true
-      });
-
-      const mesh = new THREE.Mesh(geometry, material);
-      scene.add(mesh);
-
-      isProjecting3D = false; // Arrêter la projection après la création
-    }
 
     // Animation de la scène
     function animate() {
@@ -357,6 +307,9 @@
       controls.update();
       renderer.render(scene, camera);
     }
+
+    // Ajouter un écouteur d'événements pour les clics sur la scène
+    window.addEventListener('click', addPointToScene);
   </script>
 </body>
 </html>
