@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Affichage Nuage de Points 3D avec Distorsion</title>
+  <title>Affichage Nuage de Points 3D avec Gestion de Tags</title>
   <style>
     body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
     canvas { display: block; }
 
+    /* Style des boutons et sliders */
     #header {
       position: fixed;
       top: 0;
@@ -19,11 +20,6 @@
       justify-content: space-between;
       align-items: center;
       color: white;
-      z-index: 1;
-    }
-    #header div {
-      display: flex;
-      gap: 10px;
     }
     #header button {
       background-color: #4CAF50;
@@ -37,37 +33,60 @@
     #header button:hover {
       background-color: #45a049;
     }
+    #sizeSlider {
+      width: 200px;
+    }
+    .slider-container {
+      display: flex;
+      justify-content: space-between;
+      width: 300px;
+      align-items: center;
+    }
 
-    .context-menu {
-      display: none;
+    .tag {
       position: absolute;
-      background-color: white;
-      border: 1px solid #ccc;
-      z-index: 1000;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 5px;
+      border-radius: 5px;
+    }
+
+    /* Menu contextuel */
+    .context-menu {
+      position: absolute;
+      background-color: #333;
+      color: white;
+      border-radius: 5px;
       padding: 10px;
+      display: none;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.5);
+      z-index: 100;
     }
     .context-menu button {
-      background-color: #f1f1f1;
+      background: none;
       border: none;
-      padding: 8px;
-      margin: 5px 0;
-      width: 100%;
+      color: white;
+      padding: 5px 10px;
       cursor: pointer;
+      width: 100%;
+      text-align: left;
     }
     .context-menu button:hover {
-      background-color: #ddd;
+      background-color: #555;
     }
   </style>
 </head>
 <body>
   <div id="header">
     <div>
-      <button id="addModelButton">Modèle 3D</button>
-      <button id="addMapButton">Cartographie</button> <!-- Ajout du bouton Cartographie -->
+      <button id="addModelButton">Modele 3D</button>
+      <button id="addMapButton">Cartographie</button>
       <button id="addPointButton">Ajouter un point</button>
+      <button id="projection3DButton">Projection 3D</button> <!-- Nouveau bouton -->
     </div>
-    <div>
-      <button id="distortionButton">Distorsion 3D</button>
+    <div class="slider-container">
+      <span>Point Size:</span>
+      <input type="range" id="sizeSlider" min="0.001" max="0.1" step="0.001" value="0.01">
     </div>
   </div>
 
@@ -83,15 +102,20 @@
 
   <script>
     let scene, camera, renderer, controls;
-    let pointClouds = [];  
+    let pointClouds = [];  // Support pour plusieurs nuages
     let pointSize = 0.01;
     let selectedPoints = [];
-    let isAddingPoint = false; 
-    let isDistortionMode = false;
-    let distortionPlane;
+    let selectedMarker;
     let tags = [];
-    let tempSphere = null;
+    let isAddingPoint = false;  // Indicateur pour savoir si le bouton "Ajouter un point" est actif
+    let tempSphere = null;  // Sphère temporaire affichée quand on est en mode ajout
+    let contextMenu = document.getElementById('contextMenu');
     let currentPoint = null;
+
+    // Variables pour la Projection 3D
+    let isProjecting3D = false;
+    let selectedPointsForProjection = [];
+    let textureLoader = new THREE.TextureLoader();
 
     // Initialisation de la scène
     function init() {
@@ -99,7 +123,7 @@
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setClearColor(0x000000);
+      renderer.setClearColor(0x000000); // Fond noir
       document.body.appendChild(renderer.domElement);
 
       camera.position.z = 10;
@@ -112,7 +136,7 @@
 
     init();
 
-    // Fonction pour charger le fichier
+    // Chargement du fichier
     document.getElementById('fileInput').addEventListener('change', function(event) {
       const file = event.target.files[0];
       if (file) {
@@ -192,16 +216,26 @@
       controls.update();
     }
 
-    // Activation du mode ajout de point
+    // Changer la taille des points
+    document.getElementById('sizeSlider').addEventListener('input', function(event) {
+      pointSize = parseFloat(event.target.value);
+      pointClouds.forEach(cloud => {
+        cloud.material.size = pointSize;
+      });
+    });
+
+    // Ajouter un point vert à la scène
     document.getElementById('addPointButton').addEventListener('click', function() {
       isAddingPoint = !isAddingPoint;
       if (isAddingPoint) {
+        // Afficher une sphère verte sous le curseur
         tempSphere = new THREE.Mesh(
           new THREE.SphereGeometry(0.1, 32, 32),
           new THREE.MeshBasicMaterial({ color: 0x00ff00 })
         );
         scene.add(tempSphere);
       } else {
+        // Cacher la sphère temporaire
         if (tempSphere) {
           scene.remove(tempSphere);
           tempSphere = null;
@@ -209,9 +243,18 @@
       }
     });
 
-    // Ajouter un point
+    // Projection 3D : Sélectionner 4 points et projeter une image
+    document.getElementById('projection3DButton').addEventListener('click', function() {
+      isProjecting3D = !isProjecting3D;
+      selectedPointsForProjection = [];
+      if (isProjecting3D) {
+        alert('Sélectionnez 4 points pour la projection 3D.');
+      }
+    });
+
+    // Sélectionner les points
     document.addEventListener('click', function(event) {
-      if (isAddingPoint && tempSphere) {
+      if (isProjecting3D && selectedPointsForProjection.length < 4) {
         const mouse = new THREE.Vector2();
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -222,63 +265,68 @@
         const intersects = raycaster.intersectObjects(scene.children);
         if (intersects.length > 0) {
           const point = intersects[0].point;
-          tempSphere.position.copy(point);
+          selectedPointsForProjection.push(point);
+
+          const marker = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1, 16, 16),
+            new THREE.MeshBasicMaterial({ color: 0x0000ff })
+          );
+          marker.position.copy(point);
+          scene.add(marker);
+
+          if (selectedPointsForProjection.length === 4) {
+            alert('4 points sélectionnés. Chargez l\'image pour la projection.');
+            loadProjectionImage();
+          }
         }
       }
     });
 
-    // Fonction de distorsion 3D
-    document.getElementById('distortionButton').addEventListener('click', function() {
-      isDistortionMode = !isDistortionMode;
-      selectedPoints = [];
-    });
-
-    // Sélectionner les points pour la distorsion
-    document.addEventListener('click', function(event) {
-      if (!isDistortionMode) return;
-      
-      const mouse = new THREE.Vector2(
-        (event.clientX / window.innerWidth) * 2 - 1,
-        -(event.clientY / window.innerHeight) * 2 + 1
-      );
-      
-      const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera(mouse, camera);
-      
-      const intersects = raycaster.intersectObjects(scene.children);
-      if (intersects.length > 0) {
-        selectedPoints.push(intersects[0].point);
-        
-        if (selectedPoints.length === 4) {
-          applyDistortion();
-          isDistortionMode = false;
+    // Charger l'image à projeter
+    function loadProjectionImage() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          textureLoader.load(URL.createObjectURL(file), function(texture) {
+            projectImageOnSurface(texture);
+          });
         }
-      }
-    });
-
-    // Appliquer la distorsion
-    function applyDistortion() {
-      if (selectedPoints.length !== 4) return;
-
-      const geometry = new THREE.PlaneGeometry(1, 1);
-      const texture = new THREE.TextureLoader().load('https://via.placeholder.com/512');
-      const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-      
-      distortionPlane = new THREE.Mesh(geometry, material);
-      scene.add(distortionPlane);
-
-      const matrix = new THREE.Matrix4();
-      matrix.set(
-        selectedPoints[0].x, selectedPoints[1].x, selectedPoints[2].x, selectedPoints[3].x,
-        selectedPoints[0].y, selectedPoints[1].y, selectedPoints[2].y, selectedPoints[3].y,
-        selectedPoints[0].z, selectedPoints[1].z, selectedPoints[2].z, selectedPoints[3].z,
-        0, 0, 0, 1
-      );
-
-      distortionPlane.applyMatrix4(matrix);
+      };
+      input.click();
     }
 
-    // Fonction d'animation continue
+    // Projeter l'image sur la surface
+    function projectImageOnSurface(texture) {
+      if (selectedPointsForProjection.length !== 4) {
+        alert("Sélectionnez d'abord 4 points.");
+        return;
+      }
+
+      const geometry = new THREE.Geometry();
+      geometry.vertices.push(...selectedPointsForProjection);
+
+      const face = new THREE.Face3(0, 1, 2);
+      const face2 = new THREE.Face3(0, 2, 3);
+      geometry.faces.push(face, face2);
+
+      geometry.computeFaceNormals();
+
+      const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.DoubleSide,
+        transparent: true
+      });
+
+      const mesh = new THREE.Mesh(geometry, material);
+      scene.add(mesh);
+
+      isProjecting3D = false; // Arrêter la projection après la création
+    }
+
+    // Animation de la scène
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
