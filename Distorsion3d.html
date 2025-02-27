@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Affichage Nuage de Points 3D avec Distorsion</title>
+  <style>
+    body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    canvas { display: block; }
+    #header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+    }
+    #header button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    #header button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <button id="distortionButton">Distorsion 3D</button>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script>
+    let scene, camera, renderer, controls;
+    let selectedPoints = [];
+    let isDistortionMode = false;
+    let distortionPlane;
+
+    function init() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+      
+      camera.position.z = 10;
+      animate();
+    }
+    init();
+
+    document.getElementById('distortionButton').addEventListener('click', function() {
+      isDistortionMode = true;
+      selectedPoints = [];
+    });
+
+    document.addEventListener('click', function(event) {
+      if (!isDistortionMode) return;
+      
+      const mouse = new THREE.Vector2(
+        (event.clientX / window.innerWidth) * 2 - 1,
+        -(event.clientY / window.innerHeight) * 2 + 1
+      );
+      
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+      
+      const intersects = raycaster.intersectObjects(scene.children);
+      if (intersects.length > 0) {
+        selectedPoints.push(intersects[0].point);
+        
+        if (selectedPoints.length === 4) {
+          applyDistortion();
+          isDistortionMode = false;
+        }
+      }
+    });
+
+    function applyDistortion() {
+      if (selectedPoints.length !== 4) return;
+      
+      const geometry = new THREE.PlaneGeometry(1, 1);
+      const texture = new THREE.TextureLoader().load('https://via.placeholder.com/512');
+      const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+      
+      distortionPlane = new THREE.Mesh(geometry, material);
+      scene.add(distortionPlane);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+  </script>
+</body>
+</html>
