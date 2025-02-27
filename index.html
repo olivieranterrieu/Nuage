@@ -82,7 +82,7 @@
       <button id="addModelButton">Modele 3D</button>
       <button id="addMapButton">Cartographie</button>
       <button id="addPointButton">Ajouter un point</button>
-      <button id="addProjectionButton">Projection 3D</button>
+      <button id="addProjectionButton">Projection 2D3D</button>
     </div>
     <div class="slider-container">
       <span>Point Size:</span>
@@ -177,17 +177,17 @@
     }
 
 
-// Ajoute ce code dans ton script actuel
+//--------------------------------------------------------------------------------------------------------------------------
+// Partie 1: Affichage des points au fur et à mesure
 
-// Bouton Projection 2D3D
 document.getElementById('addProjectionButton').addEventListener('click', function() {
   if (selectedPoints.length < 4) {
-    isSelectingPoints = true; // Activer le mode de sélection des points
-    selectedPoints = []; // Réinitialiser les points sélectionnés
-    spheres.forEach(sphere => scene.remove(sphere)); // Supprimer les sphères existantes
+    isSelectingPoints = true; // Activer la sélection des points
+    spheres.forEach(sphere => scene.remove(sphere)); // Supprimer les anciennes sphères
     spheres = []; // Réinitialiser le tableau des sphères
   } else {
-    addRedSpheresToSelectedPoints(); // Si 4 points sont déjà sélectionnés, ajouter les sphères rouges
+    // Si les 4 points sont déjà sélectionnés, procéder à la projection de l'image
+    projectImageOnSurface(selectedPoints);
   }
 });
 
@@ -205,103 +205,71 @@ function selectPoint(event) {
     if (intersects.length > 0) {
       const point = intersects[0].point;
       selectedPoints.push(point);
-      if (selectedPoints.length === 4) {
-        // Lorsque 4 points sont sélectionnés, afficher les sphères et charger l'image
-        addRedSpheresToSelectedPoints();
-        openImageLoader();  // Charge l'image sur le plan
-      }
+      addRedSphereToPoint(point); // Ajouter une sphère rouge pour ce point
     }
   }
 }
 
-// Fonction pour ajouter des sphères rouges aux points sélectionnés
-function addRedSpheresToSelectedPoints() {
-  // Ajouter des sphères rouges à chaque point sélectionné
-  selectedPoints.forEach(point => {
-    const sphere = new THREE.Mesh(
-      new THREE.SphereGeometry(0.2, 32, 32),
-      new THREE.MeshBasicMaterial({ color: 0xff0000 })
-    );
-    sphere.position.copy(point);
-    scene.add(sphere);
-    spheres.push(sphere);
-  });
+// Ajouter une sphère rouge à chaque point sélectionné
+function addRedSphereToPoint(point) {
+  const sphere = new THREE.Mesh(
+    new THREE.SphereGeometry(0.2, 32, 32),
+    new THREE.MeshBasicMaterial({ color: 0xff0000 })
+  );
+  sphere.position.copy(point);
+  scene.add(sphere);
+  spheres.push(sphere);
 }
 
+// Partie 2: Projeter l'image sur la surface définie par les points
 
+function projectImageOnSurface(points) {
+  if (points.length < 4) return;
 
-    
-// Fonction pour ouvrir la fenêtre de chargement d'image
-function openImageLoader() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
-  input.style.display = 'none';
+  // Créer un plan ou une surface définie par les points
+  const geometry = new THREE.Geometry();
+  geometry.vertices.push(...points); // Ajoute les 4 points comme sommets
+
+  // Créer un plan ou une surface approximée à partir des points
+  // Ici, nous allons simplement définir un "plan" à partir des points pour la projection
+  const normal = new THREE.Vector3();
+  const v0 = points[0];
+  const v1 = points[1];
+  const v2 = points[2];
+  const v3 = points[3];
+
+  // Calculer les normales et la surface approximée pour la projection
+  const v01 = new THREE.Vector3().subVectors(v1, v0);
+  const v02 = new THREE.Vector3().subVectors(v2, v0);
+  normal.crossVectors(v01, v02).normalize(); // Normal du plan défini par les points
+
+  const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, v0);
+
+  // Calculer la projection de l'image sur le plan ou la surface
+  const textureLoader = new THREE.TextureLoader();
+  const texture = textureLoader.load('path/to/your/image.jpg'); // Remplace avec le chemin de ton image
+
+  const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+  const projectedSurface = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), material);
   
-  input.addEventListener('change', function(event) {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const img = new Image();
-        img.src = e.target.result;
-        img.onload = function() {
-          projectImageOntoPlane(img);
-        };
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-  
-  input.click(); // Ouvre le sélecteur de fichiers
+  // Orienter la surface projetée selon la normale calculée
+  projectedSurface.lookAt(normal.add(v0)); // Faire face à la normale du plan
+
+  // Positionner la surface sur le plan des points
+  projectedSurface.position.copy(v0);
+
+  // Ajouter la surface projetée à la scène
+  scene.add(projectedSurface);
 }
 
-// Fonction pour projeter l'image sur la surface définie par les 4 points
-function projectImageOntoPlane(img) {
-  if (selectedPoints.length === 4) {
-    // Créer un plane avec les 4 points sélectionnés
-    const geometry = new THREE.PlaneGeometry(10, 10); // On peut ajuster la taille
-    const texture = new THREE.Texture(img);
-    texture.needsUpdate = true;
 
-    const material = new THREE.MeshBasicMaterial({
-      map: texture,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.8
-    });
 
-    imagePlane = new THREE.Mesh(geometry, material);
+
+
+
+//--------------------------------------------------------------------------------------------------------------------------
+
     
-    // Positionner le plane à la moyenne des 4 points pour le centrer
-    const center = new THREE.Vector3();
-    selectedPoints.forEach(p => center.add(p));
-    center.divideScalar(4);
-    
-    imagePlane.position.set(center.x, center.y, center.z);
-    
-    // Calculer l'orientation du plane à partir des 4 points (normal)
-    const v1 = new THREE.Vector3().subVectors(selectedPoints[1], selectedPoints[0]);
-    const v2 = new THREE.Vector3().subVectors(selectedPoints[2], selectedPoints[0]);
-    const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
-    imagePlane.lookAt(normal);
-
-    scene.add(imagePlane);
-  }
-}
-
-// Ajouter un écouteur d'événements pour sélectionner des points sur le nuage
-document.addEventListener('click', selectPoint);
-
-// Bouton pour activer la sélection des points
-document.getElementById('addPointButton').addEventListener('click', function() {
-  isSelectingPoints = !isSelectingPoints;
-  selectedPoints = []; // Réinitialiser la sélection des points
-  spheres.forEach(sphere => scene.remove(sphere)); // Supprimer les anciennes sphères
-  spheres = []; // Réinitialiser le tableau des sphères
-});
-
-
 
 
 
