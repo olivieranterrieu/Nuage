@@ -343,6 +343,8 @@
 function nouvelleFonction() {
   document.title="Oyé Oyé!";
   alert("Le bouton 'Nouvelle Fonction' a été cliqué !");
+    // Rétablir le titre après la fermeture de l'alerte
+  document.title = "Mon Application";  // Remettre le titre original
 }
 
 document.getElementById('addProjectionButton').addEventListener('click', function() {
