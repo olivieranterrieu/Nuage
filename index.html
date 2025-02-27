@@ -111,6 +111,9 @@
     let tempSphere = null;  // Sphère temporaire affichée quand on est en mode ajout
     let contextMenu = document.getElementById('contextMenu');
     let currentPoint = null;
+    let spheres = [];
+    let isSelectingPoints = false; // Indicateur pour savoir si on est en mode sélection de points
+    let imagePlane; // Plane pour afficher l'image projetée
 
     // Initialisation de la scène
     function init() {
@@ -173,6 +176,128 @@
       return { positions, colors };
     }
 
+
+
+
+
+
+    
+// Fonction pour ajouter des sphères rouges aux points sélectionnés
+function addRedSpheresToSelectedPoints() {
+  // Ajouter des sphères rouges à chaque point sélectionné
+  selectedPoints.forEach(point => {
+    const sphere = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 32, 32),
+      new THREE.MeshBasicMaterial({ color: 0xff0000 })
+    );
+    sphere.position.copy(point);
+    scene.add(sphere);
+    spheres.push(sphere);
+  });
+}
+// Fonction pour sélectionner un point dans le nuage
+function selectPoint(event) {
+  if (selectedPoints.length < 4 && isSelectingPoints) {
+    const mouse = new THREE.Vector2();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects = raycaster.intersectObjects(scene.children);
+    if (intersects.length > 0) {
+      const point = intersects[0].point;
+      selectedPoints.push(point);
+      if (selectedPoints.length === 4) {
+        // Lorsque 4 points sont sélectionnés, afficher les sphères et charger l'image
+        addRedSpheresToSelectedPoints();
+        openImageLoader();
+      }
+    }
+  }
+}
+
+// Fonction pour ouvrir la fenêtre de chargement d'image
+function openImageLoader() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.style.display = 'none';
+  
+  input.addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = function() {
+          projectImageOntoPlane(img);
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+  
+  input.click(); // Ouvre le sélecteur de fichiers
+}
+
+// Fonction pour projeter l'image sur la surface définie par les 4 points
+function projectImageOntoPlane(img) {
+  if (selectedPoints.length === 4) {
+    // Créer un plane avec les 4 points sélectionnés
+    const geometry = new THREE.PlaneGeometry(10, 10); // On peut ajuster la taille
+    const texture = new THREE.Texture(img);
+    texture.needsUpdate = true;
+
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.8
+    });
+
+    imagePlane = new THREE.Mesh(geometry, material);
+    
+    // Positionner le plane à la moyenne des 4 points pour le centrer
+    const center = new THREE.Vector3();
+    selectedPoints.forEach(p => center.add(p));
+    center.divideScalar(4);
+    
+    imagePlane.position.set(center.x, center.y, center.z);
+    
+    // Calculer l'orientation du plane à partir des 4 points (normal)
+    const v1 = new THREE.Vector3().subVectors(selectedPoints[1], selectedPoints[0]);
+    const v2 = new THREE.Vector3().subVectors(selectedPoints[2], selectedPoints[0]);
+    const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
+    imagePlane.lookAt(normal);
+
+    scene.add(imagePlane);
+  }
+}
+
+// Ajouter un écouteur d'événements pour sélectionner des points sur le nuage
+document.addEventListener('click', selectPoint);
+
+// Bouton pour activer la sélection des points
+document.getElementById('addPointButton').addEventListener('click', function() {
+  isSelectingPoints = !isSelectingPoints;
+  selectedPoints = []; // Réinitialiser la sélection des points
+  spheres.forEach(sphere => scene.remove(sphere)); // Supprimer les anciennes sphères
+  spheres = []; // Réinitialiser le tableau des sphères
+});
+
+
+
+
+
+
+
+
+
+
+    
     // Créer un nuage de points
     function createPointCloud(data) {
       const geometry = new THREE.BufferGeometry();
