@@ -340,7 +340,18 @@
         y: -(vector.y * heightHalf) + heightHalf
       };
     }
+//----------------------------------------------------------------------------------------------------------
+// Nouvelle fonction Projection
+    // Fonction définie avant l'appel
+function nouvelleFonction() {
+  alert("Le bouton 'Nouvelle Fonction' a été cliqué !");
+}
 
+document.getElementById('addProjectionButton').addEventListener('click', function() {
+  nouvelleFonction();  // Appel de la fonction ici
+});
+//----------------------------------------------------------------------------------------------------------
+    
     // Animer la scène
     function animate() {
       requestAnimationFrame(animate);
