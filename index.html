@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Affichage Nuage de Points 3Da</title>
+  <title>Affichage Nuage de Points 3D</title>
   <style>
     body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
     canvas { display: block; }
@@ -234,31 +234,47 @@
 function applyTexture(imageSrc) {
     const texture = new THREE.TextureLoader().load(imageSrc);
     
-    const geometry = new THREE.PlaneGeometry(5, 5);
+    if (selectedPoints.length < 4) return;
+
+    // Création de la géométrie personnalisée avec les 4 points sélectionnés
+    const geometry = new THREE.BufferGeometry();
+
+    const vertices = new Float32Array([
+        selectedPoints[0].x, selectedPoints[0].y, selectedPoints[0].z,
+        selectedPoints[1].x, selectedPoints[1].y, selectedPoints[1].z,
+        selectedPoints[2].x, selectedPoints[2].y, selectedPoints[2].z,
+        selectedPoints[3].x, selectedPoints[3].y, selectedPoints[3].z
+    ]);
+
+    // Définition des indices pour former 2 triangles
+    const indices = new Uint16Array([
+        0, 1, 2,
+        2, 3, 0
+    ]);
+
+    // Définition des coordonnées UV pour mapper la texture correctement
+    const uvs = new Float32Array([
+        0, 1,   // Point 0
+        1, 1,   // Point 1
+        1, 0,   // Point 2
+        0, 0    // Point 3
+    ]);
+
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+
+    // Création du matériau avec la texture
     const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-    
+
+    // Suppression de l'ancienne texture si nécessaire
     if (textureMesh) {
         scene.remove(textureMesh);
     }
-    
+
+    // Création et ajout du nouveau mesh texturé
     textureMesh = new THREE.Mesh(geometry, material);
     scene.add(textureMesh);
-    positionTexture();
-}
-
-function positionTexture() {
-    if (selectedPoints.length < 4 || !textureMesh) return;
-    
-    const shape = new THREE.Shape();
-    shape.moveTo(selectedPoints[0].x, selectedPoints[0].y);
-    shape.lineTo(selectedPoints[1].x, selectedPoints[1].y);
-    shape.lineTo(selectedPoints[2].x, selectedPoints[2].y);
-    shape.lineTo(selectedPoints[3].x, selectedPoints[3].y);
-    shape.lineTo(selectedPoints[0].x, selectedPoints[0].y);
-    
-    const geometry = new THREE.ShapeGeometry(shape);
-    textureMesh.geometry.dispose();
-    textureMesh.geometry = geometry;
 }
 
     document.getElementById('addProjectionButton')?.addEventListener('click', function() {
