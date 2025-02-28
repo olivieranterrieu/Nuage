@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Affichage Nuage de Points 3D</title>
+  <title>Affichage Nuage de Points 3Da</title>
   <style>
     body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
     canvas { display: block; }
@@ -114,6 +114,8 @@
     let spheres = [];
     let isSelectingPoints = false; // Indicateur pour savoir si on est en mode sélection de points
     let imagePlane; // Plane pour afficher l'image projetée
+    let imageSelected = false;
+
 
     // Initialisation de la scène
     function init() {
@@ -178,139 +180,84 @@
 
 
 //--------------------------------------------------------------------------------------------------------------------------
+   document.addEventListener('click', function(event) {
+      if (isSelectingPoints && selectedPoints.length < 4) {
+        const mouse = new THREE.Vector2();
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-// Clic sur le bouton "Projection 2D3D"
-document.getElementById('addProjectionButton').addEventListener('click', function() {
-  if (selectedPoints.length < 4) {
-    // Réinitialiser les anciens points et sphères
-    spheres.forEach(sphere => scene.remove(sphere));
-    spheres = [];  // Réinitialiser le tableau des sphères
-    selectedPoints = [];  // Réinitialiser les points sélectionnés
-    isSelectingPoints = true;  // Autoriser la sélection des points
-    console.log("Vous pouvez maintenant sélectionner les 4 points.");
-  } else {
-    // Si 4 points sont sélectionnés, ouvrir une fenêtre de sélection d'image
-    openImageSelectionWindow();
-  }
-});
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
 
-// Fonction de sélection des points par clic
-function selectPoint(event) {
-  if (isSelectingPoints && selectedPoints.length < 4) {
-    // Calculer la position du clic dans l'espace 3D
-    const mouse = new THREE.Vector2();
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, camera);
-
-    // Intersecter les objets dans la scène
-    const intersects = raycaster.intersectObjects(scene.children, true);  // Vérifier tous les objets de la scène
-
-    if (intersects.length > 0) {
-      const point = intersects[0].point;
-      // Ajouter ce point au tableau
-      selectedPoints.push(point);
-      // Afficher une sphère rouge à cet endroit
-      addRedSphereToPoint(point);
-      if (selectedPoints.length === 4) {
-        // Une fois les 4 points sélectionnés, ouvrir la fenêtre de sélection d'image
-        setTimeout(() => {
-          openImageSelectionWindow();  // Retarder l'appel pour garantir que la logique est synchronisée
-        }, 100);  // Retard de 100 ms pour laisser le temps aux sphères de s'afficher
+        const intersects = raycaster.intersectObjects(scene.children);
+        if (intersects.length > 0) {
+          const point = intersects[0].point;
+          selectedPoints.push(point);
+          addRedSphereToPoint(point);
+          if (selectedPoints.length === 4) {
+            setTimeout(() => {
+              openImageSelectionWindow();
+            }, 100);
+          }
+        }
       }
+    });
+
+    function addRedSphereToPoint(point) {
+      const sphere = new THREE.Mesh(
+        new THREE.SphereGeometry(0.2, 32, 32), 
+        new THREE.MeshBasicMaterial({ color: 0xff0000 })
+      );
+      sphere.position.copy(point);
+      scene.add(sphere);
+      spheres.push(sphere);
     }
-  }
-}
 
-// Ajouter une sphère rouge à chaque point sélectionné
-function addRedSphereToPoint(point) {
-  const sphere = new THREE.Mesh(
-    new THREE.SphereGeometry(0.2, 32, 32), 
-    new THREE.MeshBasicMaterial({ color: 0xff0000 })
-  );
-  sphere.position.copy(point);
-  scene.add(sphere);  // Ajouter la sphère à la scène
-  spheres.push(sphere);  // Ajouter la sphère au tableau
-}
+    function openImageSelectionWindow() {
+      if (imageSelected) return;
 
-// Fonction d'ouverture de la fenêtre de sélection d'image
-function openImageSelectionWindow() {
-  if (imageSelected) return;  // Si une image a déjà été sélectionnée, ne rien faire
-
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
-  input.onchange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageURL = e.target.result;
-        // Charger l'image sélectionnée et la projeter sur la surface
-        projectImageOnSurface(selectedPoints, imageURL);
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            projectImageOnSurface(selectedPoints, e.target.result);
+          };
+          reader.readAsDataURL(file);
+        }
       };
-      reader.readAsDataURL(file);
+      input.click();
     }
-  };
-  input.click();  // Ouvrir la fenêtre de sélection de fichier
-}
 
-// Fonction de projection de l'image sur la surface définie par les points
-function projectImageOnSurface(points, imageURL) {
-  if (points.length < 4) return;
+    function projectImageOnSurface(points, imageURL) {
+      if (points.length < 4) return;
+      const textureLoader = new THREE.TextureLoader();
+      const texture = textureLoader.load(imageURL);
+      const geometry = new THREE.PlaneGeometry(3, 3);
+      const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+      const plane = new THREE.Mesh(geometry, material);
+      scene.add(plane);
 
-  // Créer une géométrie pour la surface (Quadrilatère)
-  const geometry = new THREE.Geometry();
-  geometry.vertices.push(...points);
+      isSelectingPoints = false;
+      selectedPoints = [];
+      spheres.forEach(sphere => scene.remove(sphere));
+      spheres = [];
+      imageSelected = true;
+    }
 
-  // Calculer la normale du plan à partir des points
-  const normal = new THREE.Vector3();
-  const v0 = points[0];
-  const v1 = points[1];
-  const v2 = points[2];
-  const v3 = points[3];
-
-  const v01 = new THREE.Vector3().subVectors(v1, v0);
-  const v02 = new THREE.Vector3().subVectors(v2, v0);
-  normal.crossVectors(v01, v02).normalize();
-
-  const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, v0);
-
-  // Créer un matériau avec la texture de l'image
-  const textureLoader = new THREE.TextureLoader();
-  const texture = textureLoader.load(imageURL);  // Charger l'image sélectionnée
-
-  // Créer un mesh pour la projection de l'image
-  const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-  
-  // Créer une géométrie pour la surface projetée (quadrilatère)
-  const projectedSurface = new THREE.Mesh(new THREE.Geometry(), material);
-
-  // Définir la géométrie de la surface projetée (quadrilatère)
-  projectedSurface.geometry.vertices.push(v0, v1, v2, v3);
-  projectedSurface.geometry.faces.push(new THREE.Face3(0, 1, 2));  // Premier triangle
-  projectedSurface.geometry.faces.push(new THREE.Face3(2, 3, 0));  // Deuxième triangle
-  projectedSurface.geometry.computeFaceNormals();  // Calcul des normales des faces pour l'éclairage
-
-  // Ajuster la projection pour être alignée avec le plan
-  projectedSurface.lookAt(normal.add(v0));
-  projectedSurface.position.copy(v0);
-
-  // Ajouter la surface projetée à la scène
-  scene.add(projectedSurface);
-
-  // Réinitialiser l'état de sélection
-  isSelectingPoints = false;
-  selectedPoints = [];  // Réinitialiser les points sélectionnés
-  spheres.forEach(sphere => scene.remove(sphere));  // Retirer les sphères de la scène
-  spheres = [];  // Réinitialiser les sphères
-  imageSelected = true;  // Marquer que l'image a été sélectionnée
-}
-
-// Ajouter un écouteur d'événements pour la sélection de points par clic dans le nuage
-window.addEventListener('click', selectPoint);
+    document.getElementById('addProjectionButton')?.addEventListener('click', function() {
+      if (selectedPoints.length < 4) {
+        spheres.forEach(sphere => scene.remove(sphere));
+        spheres = [];
+        selectedPoints = [];
+        isSelectingPoints = true;
+      } else {
+        openImageSelectionWindow();
+      }
+    });
 
 //--------------------------------------------------------------------------------------------------------------------------
 
