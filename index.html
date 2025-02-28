@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Affichage Nuage de Points 3D</title>
+  <title>Affichage Nuage de Points 3Da</title>
   <style>
     body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
     canvas { display: block; }
@@ -181,8 +181,8 @@
 
 
 //--------------------------------------------------------------------------------------------------------------------------
-   document.addEventListener('click', function(event) {
-      if (isSelectingPoints && selectedPoints.length < 4) {
+  document.addEventListener('click', function(event) {
+    if (isSelectingPoints && selectedPoints.length < 4) {
         const mouse = new THREE.Vector2();
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -190,31 +190,33 @@
         const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(mouse, camera);
 
+        // Cast le rayon dans la scène pour trouver les intersections
         const intersects = raycaster.intersectObjects(scene.children);
         if (intersects.length > 0) {
-          const point = intersects[0].point;
-          selectedPoints.push(point);
-          addRedSphereToPoint(point);
-          if (selectedPoints.length === 4) {
-            setTimeout(() => {
-              openImageSelector();
-            }, 100);
-          }
+            const point = intersects[0].point;
+            selectedPoints.push(point);
+            addRedSphereToPoint(point);
+            if (selectedPoints.length === 4) {
+                setTimeout(() => {
+                    openImageSelector();
+                }, 100);
+            }
         }
-      }
-    });
+    }
+});
 
-    function addRedSphereToPoint(point) {
-      const sphere = new THREE.Mesh(
+function addRedSphereToPoint(point) {
+    // Création de la sphère rouge
+    const sphere = new THREE.Mesh(
         new THREE.SphereGeometry(0.2, 32, 32), 
         new THREE.MeshBasicMaterial({ color: 0xff0000 })
-      );
-      sphere.position.copy(point);
-      scene.add(sphere);
-      spheres.push(sphere);
-    }
+    );
+    sphere.position.copy(point);  // Positionner la sphère aux coordonnées exactes du point
+    scene.add(sphere);  // Ajouter la sphère à la scène
+    spheres.push(sphere);  // Ajouter à la liste des sphères pour gestion future
+}
 
-    function openImageSelector() {
+function openImageSelector() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -277,16 +279,16 @@ function applyTexture(imageSrc) {
     scene.add(textureMesh);
 }
 
-    document.getElementById('addProjectionButton')?.addEventListener('click', function() {
-      if (selectedPoints.length < 4) {
+document.getElementById('addProjectionButton')?.addEventListener('click', function() {
+    if (selectedPoints.length < 4) {
         spheres.forEach(sphere => scene.remove(sphere));
         spheres = [];
         selectedPoints = [];
         isSelectingPoints = true;
-      } else {
+    } else {
         openImageSelectionWindow();
-      }
-    });
+    }
+});
 
 //--------------------------------------------------------------------------------------------------------------------------
 
