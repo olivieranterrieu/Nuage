@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Affichage Nuage de Points 3D</title>
+  <title>Affichage Nuage de Points 3Da</title>
   <style>
     body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
     canvas { display: block; }
@@ -181,7 +181,7 @@
 
 
 //--------------------------------------------------------------------------------------------------------------------------
- document.addEventListener('click', function(event) {
+document.addEventListener('click', function(event) {
     if (isSelectingPoints && selectedPoints.length < 4) {
         const mouse = new THREE.Vector2();
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -190,10 +190,11 @@
         const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(mouse, camera);
 
-        // Cast le rayon dans la scène pour trouver les intersections
-        const intersects = raycaster.intersectObjects(scene.children);
-        if (intersects.length > 0) {
-            const point = intersects[0].point;
+        // Définir un plan pour projeter le rayon
+        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); // Plan XY (normal dans la direction Z)
+        const intersect = getRayIntersection(raycaster, plane);
+        if (intersect) {
+            const point = intersect;
             selectedPoints.push(point);
             addRedSphereToPoint(point);
             if (selectedPoints.length === 4) {
@@ -204,6 +205,13 @@
         }
     }
 });
+
+// Fonction pour obtenir l'intersection du rayon avec un plan
+function getRayIntersection(raycaster, plane) {
+    const ray = raycaster.ray;
+    const intersects = ray.intersectPlane(plane);
+    return intersects ? intersects : null;
+}
 
 function addRedSphereToPoint(point) {
     // Création de la sphère rouge
