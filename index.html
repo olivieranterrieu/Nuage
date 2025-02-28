@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Affichage Nuage de Points 3Da</title>
+  <title>Affichage Nuage de Points 3D</title>
   <style>
     body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
     canvas { display: block; }
@@ -115,6 +115,7 @@
     let isSelectingPoints = false; // Indicateur pour savoir si on est en mode sélection de points
     let imagePlane; // Plane pour afficher l'image projetée
     let imageSelected = false;
+    textureMesh;
 
 
     // Initialisation de la scène
@@ -196,7 +197,7 @@
           addRedSphereToPoint(point);
           if (selectedPoints.length === 4) {
             setTimeout(() => {
-              openImageSelectionWindow();
+              openImageSelector();
             }, 100);
           }
         }
@@ -213,40 +214,52 @@
       spheres.push(sphere);
     }
 
-    function openImageSelectionWindow() {
-      if (imageSelected) return;
-
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = (event) => {
+    function openImageSelector() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = function (event) {
         const file = event.target.files[0];
         if (file) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            projectImageOnSurface(selectedPoints, e.target.result);
-          };
-          reader.readAsDataURL(file);
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                applyTexture(e.target.result);
+            };
+            reader.readAsDataURL(file);
         }
-      };
-      input.click();
-    }
+    };
+    input.click();
+}
 
-    function projectImageOnSurface(points, imageURL) {
-      if (points.length < 4) return;
-      const textureLoader = new THREE.TextureLoader();
-      const texture = textureLoader.load(imageURL);
-      const geometry = new THREE.PlaneGeometry(3, 3);
-      const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-      const plane = new THREE.Mesh(geometry, material);
-      scene.add(plane);
-
-      isSelectingPoints = false;
-      selectedPoints = [];
-      spheres.forEach(sphere => scene.remove(sphere));
-      spheres = [];
-      imageSelected = true;
+function applyTexture(imageSrc) {
+    const texture = new THREE.TextureLoader().load(imageSrc);
+    
+    const geometry = new THREE.PlaneGeometry(5, 5);
+    const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+    
+    if (textureMesh) {
+        scene.remove(textureMesh);
     }
+    
+    textureMesh = new THREE.Mesh(geometry, material);
+    scene.add(textureMesh);
+    positionTexture();
+}
+
+function positionTexture() {
+    if (selectedPoints.length < 4 || !textureMesh) return;
+    
+    const shape = new THREE.Shape();
+    shape.moveTo(selectedPoints[0].x, selectedPoints[0].y);
+    shape.lineTo(selectedPoints[1].x, selectedPoints[1].y);
+    shape.lineTo(selectedPoints[2].x, selectedPoints[2].y);
+    shape.lineTo(selectedPoints[3].x, selectedPoints[3].y);
+    shape.lineTo(selectedPoints[0].x, selectedPoints[0].y);
+    
+    const geometry = new THREE.ShapeGeometry(shape);
+    textureMesh.geometry.dispose();
+    textureMesh.geometry = geometry;
+}
 
     document.getElementById('addProjectionButton')?.addEventListener('click', function() {
       if (selectedPoints.length < 4) {
