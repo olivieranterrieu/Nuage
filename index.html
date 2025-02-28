@@ -191,7 +191,7 @@ document.addEventListener('click', function(event) {
         raycaster.setFromCamera(mouse, camera);
 
         // Cast le rayon dans la scène pour trouver les intersections
-        const intersects = raycaster.intersectObjects(pointCloud);
+        const intersects = raycaster.intersectObjects(pointClouds);
         if (intersects.length > 0) {
             const point = intersects[0].point;
             selectedPoints.push(point);
